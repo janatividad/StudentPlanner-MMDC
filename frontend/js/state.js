@@ -1,7 +1,7 @@
 /**
  * Application State Management & LocalStorage Persistence
  */
-import { ST, stOf, DEF, guess, blank } from './utils/helpers.js';
+import { ST, stOf, DEF, guess, blank, okUrl } from './utils/helpers.js';
 
 const KEY = 'study-planner-mmdc-v3';
 
@@ -72,6 +72,25 @@ export const loadState = () => {
 
   s.subjects.forEach(x => {
     if (!x.project_id) x.project_id = s.projects[0].id;
+  });
+
+  // Sanitize and trim external URLs on loaded records according to HTTP/HTTPS rules
+  (s.assignments || []).forEach(a => {
+    if (typeof a.coursera_url === 'string') a.coursera_url = a.coursera_url.trim();
+    if (typeof a.resource_url === 'string') a.resource_url = a.resource_url.trim();
+  });
+
+  (s.links || []).forEach(l => {
+    if (typeof l.url === 'string') l.url = l.url.trim();
+    if (typeof l.label === 'string') l.label = l.label.trim();
+  });
+
+  (s.subjects || []).forEach(subItem => {
+    (subItem.props || []).forEach(p => {
+      if (p.type === 'url' && typeof p.value === 'string') {
+        p.value = p.value.trim();
+      }
+    });
   });
 
   if (window.innerWidth < 720) {

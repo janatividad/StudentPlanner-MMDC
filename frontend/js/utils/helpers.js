@@ -38,13 +38,46 @@ export const esc = (s) =>
     "'": '&#39;'
   }[c]));
 
+/**
+ * Validates that a string is a well-formed HTTP or HTTPS URL.
+ * Strictly disallows javascript:, data:, file:, and other unsafe schemes.
+ */
 export const okUrl = (u) => {
+  if (!u || typeof u !== 'string') return false;
   try {
-    const x = new URL(u);
-    return x.protocol === 'http:' || x.protocol === 'https:';
+    const trimmed = u.trim();
+    if (!trimmed) return false;
+    const x = new URL(trimmed);
+    return (x.protocol === 'http:' || x.protocol === 'https:') && Boolean(x.hostname);
   } catch {
     return false;
   }
+};
+
+/**
+ * Centralized external link renderer.
+ * Validates links at render time. Allows only HTTP and HTTPS links, escapes all values,
+ * and renders invalid links as plain text or omits them.
+ */
+export const safeExternalLink = (u, label, options = {}) => {
+  const trimmed = typeof u === 'string' ? u.trim() : '';
+  const text = label != null ? String(label) : trimmed;
+
+  if (!trimmed) {
+    return options.fallback === 'dash' ? '<span class="meta">—</span>' : '';
+  }
+
+  if (okUrl(trimmed)) {
+    const cls = options.className ? ` class="${esc(options.className)}"` : ' class="l"';
+    return `<a${cls} href="${esc(trimmed)}" target="_blank" rel="noopener noreferrer">${esc(text)}</a>`;
+  }
+
+  // Handle invalid links: omit or display as escaped plain text
+  if (options.invalidMode === 'omit') {
+    return options.fallback === 'dash' ? '<span class="meta">—</span>' : '';
+  }
+
+  return `<span class="meta" title="Invalid link (HTTP/HTTPS only)">${esc(text)}</span>`;
 };
 
 let pc = 0;
@@ -106,8 +139,7 @@ export const cmp = (a, b) => (a.due_date < b.due_date ? -1 : a.due_date > b.due_
 
 export const isOpen = (a) => a.status !== 'done';
 
-export const lk = (u, t) =>
-  u ? `<a class="l" href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : '<span class="meta">—</span>';
+export const lk = (u, t) => safeExternalLink(u, t, { className: 'l', fallback: 'dash', invalidMode: 'text' });
 
 export const pill = (ent, id, f, v) => {
   const [, , c] = stOf(v);

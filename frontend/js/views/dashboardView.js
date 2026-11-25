@@ -1,4 +1,4 @@
-import { esc, fmt, today, addDays, cmp, isOpen, lk, pill, progressBadge, dueTag, okUrl } from '../utils/helpers.js';
+import { esc, fmt, today, addDays, cmp, isOpen, lk, pill, progressBadge, dueTag, okUrl, safeExternalLink } from '../utils/helpers.js';
 import { isSaveFailed } from '../state.js';
 
 export function renderSubjectTable(state, pid) {
@@ -180,7 +180,7 @@ export function renderDashboard(state, pid, currentTab = 'upcoming') {
     <h2>Quick links</h2>
     <div class="ql">
       ${state.links.map(l => `
-        <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>
+        ${safeExternalLink(l.url, l.label, { invalidMode: 'text' })}
         <button class="ghost" style="min-height:28px;padding:0 6px;margin-right:6px" data-act="dellink" data-id="${l.id}" aria-label="Remove ${esc(l.label)}">×</button>
       `).join('') || '<span class="meta">No quick links yet.</span>'}
     </div>

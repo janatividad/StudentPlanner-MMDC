@@ -8,6 +8,7 @@ import { renderSubjectPage } from './views/subjectView.js';
 import { renderNotePage } from './views/pageView.js';
 import { renderAssignmentForm } from './views/assignmentView.js';
 import { renderModal } from './views/modalView.js';
+import { renderAuthPage } from './views/authView.js';
 
 export const uiState = {
   tab: 'upcoming',
@@ -62,6 +63,8 @@ export function renderApp() {
     bodyContent = state.projects.some(p => p.id == match[1])
       ? renderDashboard(state, +match[1], uiState.tab)
       : '<h1>Project not found</h1>';
+  } else if (h === 'auth' || h === 'signin' || h === 'signup') {
+    bodyContent = renderAuthPage();
   } else {
     bodyContent = renderDashboard(state, null, uiState.tab);
   }

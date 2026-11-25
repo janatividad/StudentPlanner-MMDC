@@ -4,10 +4,20 @@
 import { loadState } from './state.js';
 import { setupEventListeners } from './events.js';
 import { renderApp } from './router.js';
+import { authService } from './auth/authService.js';
 
 export function initApp() {
   loadState();
   setupEventListeners();
+
+  // Process incoming Supabase Auth callback tokens if present in URL hash
+  authService.handleAuthCallback();
+
+  // Listen to auth state transitions (sign in, sign out, token refresh)
+  authService.onAuthStateChange(() => {
+    renderApp();
+  });
+
   renderApp();
   registerServiceWorker();
 }

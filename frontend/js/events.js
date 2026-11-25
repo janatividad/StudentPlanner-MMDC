@@ -3,6 +3,9 @@
  */
 import { getState, saveState } from './state.js';
 import { uiState, renderApp, goBack } from './router.js';
+import { authService } from './auth/authService.js';
+import { authUiState } from './views/authView.js';
+import { setAuthConfig } from './config.js';
 import {
   blank,
   nid,
@@ -84,8 +87,16 @@ export function setupEventListeners() {
       if (sideEl) sideEl.hidden = true;
     }
 
-    const el = e.target.closest('[data-from], [data-cancel], [data-act], [data-tab]');
+    const el = e.target.closest('[data-from], [data-cancel], [data-act], [data-tab], [data-auth-tab]');
     if (!el) return;
+
+    if ('authTab' in el.dataset) {
+      authUiState.mode = el.dataset.authTab;
+      authUiState.error = '';
+      authUiState.successMessage = '';
+      renderApp();
+      return;
+    }
 
     if ('from' in el.dataset) {
       uiState.from = location.hash.slice(1);
@@ -110,6 +121,18 @@ export function setupEventListeners() {
     const id = el.dataset.id;
     const act = el.dataset.act;
 
+    if (act === 'toggleconfig') {
+      authUiState.showConfig = !authUiState.showConfig;
+      renderApp();
+      return;
+    }
+    if (act === 'signout') {
+      authService.signOut().then(() => {
+        say('Signed out successfully.');
+        renderApp();
+      });
+      return;
+    }
     if (act === 'side') {
       state.side = !state.side;
       saveState();
@@ -330,6 +353,64 @@ export function setupEventListeners() {
     const state = getState();
     const v = Object.fromEntries(new FormData(form));
     const k = form.dataset.form;
+
+    if (k === 'authconfig') {
+      setAuthConfig(v.supabase_url, v.supabase_anon_key);
+      authUiState.showConfig = false;
+      say('Supabase project configuration saved.');
+      renderApp();
+      return;
+    }
+
+    if (k === 'auth') {
+      authUiState.loading = true;
+      authUiState.error = '';
+      authUiState.successMessage = '';
+      authUiState.email = (v.email || '').trim();
+      authUiState.password = v.password || '';
+      renderApp();
+
+      if (authUiState.mode === 'signup') {
+        authService.signUp(authUiState.email, authUiState.password)
+          .then((res) => {
+            authUiState.loading = false;
+            if (res.requiresConfirmation) {
+              authUiState.successMessage = '✉️ Account created! Please check your email inbox to confirm your address before logging in.';
+              authUiState.password = '';
+            } else {
+              authUiState.successMessage = '✓ Account created and signed in!';
+              authUiState.email = '';
+              authUiState.password = '';
+              location.hash = '';
+            }
+            renderApp();
+            say('Account sign up request completed.');
+          })
+          .catch((err) => {
+            authUiState.loading = false;
+            authUiState.error = err.message || 'Failed to create account.';
+            renderApp();
+            say('Sign up error: ' + authUiState.error);
+          });
+      } else {
+        authService.signIn(authUiState.email, authUiState.password)
+          .then(() => {
+            authUiState.loading = false;
+            authUiState.email = '';
+            authUiState.password = '';
+            location.hash = '';
+            renderApp();
+            say('Signed in successfully.');
+          })
+          .catch((err) => {
+            authUiState.loading = false;
+            authUiState.error = err.message || 'Failed to sign in.';
+            renderApp();
+            say('Sign in error: ' + authUiState.error);
+          });
+      }
+      return;
+    }
 
     if (k === 'asg') {
       uiState.draft = { ...v };

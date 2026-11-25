@@ -1,9 +1,11 @@
 import { esc } from '../utils/helpers.js';
+import { authService } from '../auth/authService.js';
 
 export function renderSidebar(state, options = {}) {
   const { menu = '' } = options;
   const h = location.hash.slice(1);
   const cur = x => (h === x ? ' aria-current="page"' : '');
+  const user = authService.getUser();
 
   const sideEl = document.getElementById('side');
   if (!sideEl) return;
@@ -35,5 +37,19 @@ export function renderSidebar(state, options = {}) {
         ` : ''}
       </div>
     `).join('') || '<div class="meta" style="padding:0 8px">No projects yet.</div>'}
+
+    <div class="sh" style="margin-top: 24px;">
+      <span>Account</span>
+    </div>
+    ${user ? `
+      <a class="si" href="#auth"${cur('auth')} title="${esc(user.email)}">
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">👤 ${esc(user.email)}</span>
+      </a>
+      <button class="si" data-act="signout" style="color: var(--muted); font-size: 13px;">Sign out</button>
+    ` : `
+      <a class="si" href="#auth"${cur('auth')}>
+        🔑 Sign In / Sign Up
+      </a>
+    `}
   `;
 }

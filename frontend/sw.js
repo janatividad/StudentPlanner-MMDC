@@ -1,9 +1,19 @@
 /**
  * Service Worker for Frontend Scope
- * Enables 100% offline access, PWA installation, and instantaneous loading.
+ * Hardened Cache: Uses planner-specific prefix, only caches allowed static assets,
+ * safely deletes only old planner caches, and strictly excludes auth callbacks and API data.
  */
 
-const CACHE_NAME = 'study-planner-frontend-v1';
+const CACHE_PREFIX = 'student-planner-mmdc-';
+const CACHE_NAME = `${CACHE_PREFIX}frontend-v2`;
+
+const KNOWN_LEGACY_CACHES = new Set([
+  'study-planner-root-v1',
+  'study-planner-frontend-v1',
+  'study-planner-mmdc-v1',
+  'study-planner-mmdc-v2',
+  'study-planner-mmdc-v3'
+]);
 
 const ASSETS_TO_CACHE = [
   './',
@@ -32,6 +42,59 @@ const ASSETS_TO_CACHE = [
   './assets/apple-touch-icon.png'
 ];
 
+function isPlannerCache(name) {
+  return typeof name === 'string' && (
+    name.startsWith(CACHE_PREFIX) ||
+    name.startsWith('study-planner-') ||
+    KNOWN_LEGACY_CACHES.has(name)
+  );
+}
+
+function isCacheable(request, url) {
+  if (request.method !== 'GET') return false;
+
+  // Cache only same-origin assets within the planner's scope
+  if (url.origin !== self.location.origin) return false;
+
+  // Never cache authentication callbacks, tokens, or sessions
+  const search = url.search.toLowerCase();
+  const hash = url.hash.toLowerCase();
+  if (
+    search.includes('access_token') ||
+    search.includes('refresh_token') ||
+    search.includes('code=') ||
+    search.includes('token=') ||
+    search.includes('error_description') ||
+    hash.includes('access_token') ||
+    hash.includes('refresh_token')
+  ) {
+    return false;
+  }
+
+  // Never cache API or auth endpoints
+  const pathname = url.pathname.toLowerCase();
+  if (
+    pathname.includes('/auth/') ||
+    pathname.includes('/api/') ||
+    pathname.includes('/rest/') ||
+    pathname.includes('/v1/')
+  ) {
+    return false;
+  }
+
+  // Ensure request is within planner scope
+  const scopePath = new URL(self.registration.scope).pathname;
+  if (!pathname.startsWith(scopePath)) {
+    return false;
+  }
+
+  // Only cache explicitly allowed static file extensions or entry points
+  const isStaticExt = /\.(html|css|js|json|webmanifest|svg|png|jpg|jpeg|ico|woff2?)$/i.test(pathname);
+  const isEntry = pathname === scopePath || pathname === scopePath + 'index.html';
+
+  return isStaticExt || isEntry;
+}
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -48,7 +111,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          // Delete only old planner caches, preserving any unrelated origin caches
+          if (key !== CACHE_NAME && isPlannerCache(key)) {
+            console.log('[SW] Pruning old planner cache:', key);
             return caches.delete(key);
           }
         })
@@ -59,21 +124,24 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+
+  // If request is not cacheable (API, auth, external), pass through directly
+  if (!isCacheable(req, url)) {
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then((cachedResponse) => {
-      // Stale-While-Revalidate: return cache immediately, update in background if online
       const fetchPromise = fetch(req)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          if (networkResponse && networkResponse.status === 200 && isCacheable(req, url)) {
             const clone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
           }
           return networkResponse;
         })
         .catch(() => {
-          // Fallback if offline and requesting navigation
           if (req.mode === 'navigate') {
             return caches.match('./index.html');
           }

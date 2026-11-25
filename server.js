@@ -6,7 +6,11 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = process.env.PORT || 3000;
+const HOST = '127.0.0.1';
+const PORT = Number(process.env.PORT) || 3000;
+
+// Resolve FRONTEND_ROOT and ensure it exists and follow symlinks
+const FRONTEND_ROOT = fs.realpathSync(path.resolve(__dirname, 'frontend'));
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -21,40 +25,122 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
-const server = http.createServer((req, res) => {
-  let reqPath = decodeURI(req.url.split('?')[0]);
+function isPathContained(targetPath, rootPath) {
+  const relative = path.relative(rootPath, targetPath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
 
-  // Route root directly to frontend
-  if (reqPath === '/' || reqPath === '') {
-    reqPath = '/frontend/index.html';
-  } else if (reqPath === '/frontend' || reqPath === '/frontend/') {
-    reqPath = '/frontend/index.html';
+const server = http.createServer((req, res) => {
+  // Only allow GET and HEAD methods for static file server
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('405 Method Not Allowed');
+    return;
   }
 
-  let filePath = path.join(__dirname, reqPath);
+  let decodedPath;
+  try {
+    const rawUrl = req.url || '/';
+    const pathname = rawUrl.split('?')[0];
+    decodedPath = decodeURIComponent(pathname);
+  } catch (err) {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('400 Bad Request: Malformed URI');
+    return;
+  }
 
-  fs.stat(filePath, (err, stats) => {
-    if (err || !stats.isFile()) {
-      // Fallback: Check if it exists under frontend folder
-      const fallbackPath = path.join(__dirname, 'frontend', reqPath);
-      fs.stat(fallbackPath, (fbErr, fbStats) => {
-        if (!fbErr && fbStats.isFile()) {
-          serveFile(fallbackPath, res);
-        } else {
-          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end(`404 Not Found: ${reqPath}`);
-        }
-      });
+  // Reject null bytes
+  if (decodedPath.includes('\0')) {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('400 Bad Request: Invalid Path');
+    return;
+  }
+
+  // Normalize path and strip leading /frontend or /frontend/ prefix if present
+  let cleanPath = decodedPath.replace(/\\/g, '/');
+  if (cleanPath.startsWith('/frontend')) {
+    cleanPath = cleanPath.slice('/frontend'.length);
+  }
+
+  if (cleanPath === '' || cleanPath === '/') {
+    cleanPath = '/index.html';
+  }
+
+  // Construct target path inside FRONTEND_ROOT
+  const targetPath = path.resolve(FRONTEND_ROOT, '.' + cleanPath);
+
+  // Initial lexical containment check
+  if (!isPathContained(targetPath, FRONTEND_ROOT)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('403 Forbidden');
+    return;
+  }
+
+  // Asynchronously inspect and resolve symlinks
+  fs.lstat(targetPath, (err, stats) => {
+    if (err) {
+      if (err.code === 'ENOENT') {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(`404 Not Found: ${decodedPath}`);
+      } else {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('500 Internal Server Error');
+      }
       return;
     }
 
-    serveFile(filePath, res);
+    let filePathToResolve = targetPath;
+    if (stats.isDirectory()) {
+      filePathToResolve = path.join(targetPath, 'index.html');
+    }
+
+    fs.realpath(filePathToResolve, (realErr, realResolvedPath) => {
+      if (realErr) {
+        if (realErr.code === 'ENOENT') {
+          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end(`404 Not Found: ${decodedPath}`);
+        } else {
+          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end('500 Internal Server Error');
+        }
+        return;
+      }
+
+      // Enforce containment on final resolved real path (guards against symlink traversal)
+      if (!isPathContained(realResolvedPath, FRONTEND_ROOT)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('403 Forbidden');
+        return;
+      }
+
+      fs.stat(realResolvedPath, (statErr, finalStats) => {
+        if (statErr || !finalStats.isFile()) {
+          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end(`404 Not Found: ${decodedPath}`);
+          return;
+        }
+
+        serveFile(realResolvedPath, req, res);
+      });
+    });
   });
 });
 
-function serveFile(filePath, res) {
+function serveFile(filePath, req, res) {
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+  const headers = {
+    'Content-Type': contentType,
+    'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000',
+    'Service-Worker-Allowed': '/'
+  };
+
+  if (req.method === 'HEAD') {
+    res.writeHead(200, headers);
+    res.end();
+    return;
+  }
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
@@ -63,26 +149,28 @@ function serveFile(filePath, res) {
       return;
     }
 
-    res.writeHead(200, {
-      'Content-Type': contentType,
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000',
-      'Service-Worker-Allowed': '/'
-    });
+    res.writeHead(200, headers);
     res.end(data);
   });
 }
 
-server.listen(PORT, () => {
-  console.log(`\n✨ Student Planner MMDC is running!`);
-  console.log(`👉 Open in your browser: http://localhost:${PORT}/\n`);
-});
+function startListening(portToUse) {
+  server.listen(portToUse, HOST, () => {
+    console.log(`\n✨ Student Planner MMDC is running!`);
+    console.log(`👉 Bound to: http://${HOST}:${portToUse}/\n`);
+  });
+}
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    const nextPort = Number(PORT) + 1;
-    console.log(`Port ${PORT} is in use, trying http://localhost:${nextPort}...`);
-    server.listen(nextPort);
+    const nextPort = Number(server.address()?.port || PORT) + 1;
+    console.log(`Port in use, trying http://${HOST}:${nextPort}...`);
+    startListening(nextPort);
   } else {
     console.error('Server error:', err);
   }
 });
+
+startListening(PORT);
+
+export { server, isPathContained, FRONTEND_ROOT };

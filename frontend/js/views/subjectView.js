@@ -1,4 +1,4 @@
-import { esc, cmp, okUrl, typeOf, TYPES } from '../utils/helpers.js';
+import { esc, cmp, okUrl, typeOf, TYPES, safeExternalLink } from '../utils/helpers.js';
 import { renderAssignmentTable } from './dashboardView.js';
 
 export function renderTypeBtn(s, p, tmenu) {
@@ -41,7 +41,13 @@ export function renderValEditor(s, p) {
   if (t === 'date') return `<input type="date" ${a} value="${esc(p.value)}">`;
   if (t === 'number') return `<input type="number" step="any" ${a} value="${esc(p.value)}" placeholder="${ph}">`;
   if (t === 'text' && /description/i.test(p.label)) return `<textarea rows="2" ${a} placeholder="${ph}">${esc(p.value)}</textarea>`;
-  return `<input ${t === 'email' ? 'type="email"' : t === 'phone' ? 'type="tel"' : ''} ${a} value="${esc(p.value)}" placeholder="${ph}">${t === 'url' && okUrl(p.value) ? `<a class="l meta" href="${esc(p.value)}" target="_blank" rel="noopener" style="padding:0 8px">Open link</a>` : ''}`;
+  let linkIndicator = '';
+  if (t === 'url' && p.value) {
+    linkIndicator = okUrl(p.value)
+      ? `<a class="l meta" href="${esc(p.value.trim())}" target="_blank" rel="noopener noreferrer" style="padding:0 8px">Open link</a>`
+      : `<span class="meta" style="padding:0 8px; color:var(--od); font-size:12px;">(Invalid URL)</span>`;
+  }
+  return `<input ${t === 'email' ? 'type="email"' : t === 'phone' ? 'type="tel"' : ''} ${a} value="${esc(p.value)}" placeholder="${ph}">${linkIndicator}`;
 }
 
 export function renderSubjectPage(state, id, options = {}) {

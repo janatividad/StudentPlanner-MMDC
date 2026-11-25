@@ -73,7 +73,8 @@ StudentPlanner-MMDC/
 | **Markup & Semantics** | HTML5 | Accessible landmark roles, dialogs, semantic tags |
 | **Styling & Design** | CSS3 (Modular) | Custom Properties (variables), Light/Dark theme media queries, Flexbox & CSS Grid |
 | **Client Logic** | JavaScript (ES6+ Modules) | Native ES modules, componentized views, centralized event delegation, zero external runtime libraries |
-| **Routing** | Hash Router (`#`) | Client-side view switching (`#`, `#project-:id`, `#subject-:id`, `#new`, `#edit-:id`) |
+| **Routing** | Hash Router (`#`) | Client-side view switching (`#`, `#project-:id`, `#subject-:id`, `#new`, `#edit-:id`, `#auth`) |
+| **Authentication** | Supabase Auth | Email & password auth, email verification, session management, zero privileged keys |
 | **Client Storage** | Browser `localStorage` | Reactive in-memory state with automatic browser persistence & schema migration |
 | **PWA & Offline** | Service Worker (`sw.js`) + Manifest | 100% offline-ready, cache-first with stale-while-revalidate, installable on iPhone & desktop |
 | **Device Optimization** | Mobile-First Responsive | iOS viewport fit (`viewport-fit=cover`), safe-area insets, sliding drawer sidebar |
@@ -123,4 +124,14 @@ node server.js
 ```
 
 Then open your browser at:
-👉 **`http://localhost:3000/`**
+👉 **`http://127.0.0.1:3000/`**
+
+### Running Automated Checks
+To run the security audit, server containment checks, link sanitization tests, and auth validation:
+
+```bash
+npm test
+```
+
+### Supabase Auth Setup
+For complete instructions on configuring redirect URLs and verifying sign-up across desktop and mobile, see [docs/supabase-auth-setup.md](file:///Users/jan/Documents/StudentPlanner-MMDC/docs/supabase-auth-setup.md).
