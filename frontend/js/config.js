@@ -5,11 +5,10 @@
  * Never place service_role or privileged secret keys in browser client code.
  */
 
-// Default configuration can be overridden by localStorage or window variables
+// Default configuration with your Supabase project credentials
 export const DEFAULT_SUPABASE_CONFIG = {
-  // Configured via localStorage or default project values
-  PROJECT_URL: (typeof window !== 'undefined' && window.__SUPABASE_URL__) || '',
-  ANON_KEY: (typeof window !== 'undefined' && window.__SUPABASE_ANON_KEY__) || ''
+  PROJECT_URL: 'https://giyqcgqmhzzjbcnjlvdn.supabase.co',
+  ANON_KEY: 'sb_publishable_3fkYXA22Ea1ZoQGpWsbxcw_tsCapfSq'
 };
 
 export function getAuthConfig() {
