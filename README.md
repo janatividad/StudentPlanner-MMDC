@@ -75,6 +75,7 @@ StudentPlanner-MMDC/
 | **Client Logic** | JavaScript (ES6+ Modules) | Native ES modules, componentized views, centralized event delegation, zero external runtime libraries |
 | **Routing** | Hash Router (`#`) | Client-side view switching (`#`, `#project-:id`, `#subject-:id`, `#new`, `#edit-:id`) |
 | **Client Storage** | Browser `localStorage` | Reactive in-memory state with automatic browser persistence & schema migration |
+| **PWA & Offline** | Service Worker (`sw.js`) + Manifest | 100% offline-ready, cache-first with stale-while-revalidate, installable on iPhone & desktop |
 | **Device Optimization** | Mobile-First Responsive | iOS viewport fit (`viewport-fit=cover`), safe-area insets, sliding drawer sidebar |
 | **Local Dev Server** | Native Node.js (`node:http`, `node:fs`) | Built-in zero-dependency local server (`server.js`), no npm package downloads needed |
 

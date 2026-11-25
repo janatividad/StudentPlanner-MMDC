@@ -1,16 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Study Planner MMDC - A clean, accessible student planning dashboard">
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
-  <title>Student Planner MMDC</title>
+  <meta name="theme-color" content="#1D4ED8">
+  <meta name="color-scheme" content="light dark">
+
+  <!-- iOS / Apple PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="StudyPlanner">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+
+  <!-- Web App Manifest & Favicons -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
+
+  <title>Study Planner MMDC</title>
   <link rel="stylesheet" href="./css/main.css">
 </head>
-
 <body>
   <div id="shell">
     <aside id="side" aria-label="Sidebar"></aside>
@@ -23,5 +33,4 @@
   <!-- Application Script Module -->
   <script type="module" src="./js/app.js"></script>
 </body>
-
 </html>

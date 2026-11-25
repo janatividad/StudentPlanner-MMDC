@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background container with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+
+  <!-- Book / Study Planner Symbol -->
+  <g filter="url(#shadow)" fill="#FFFFFF">
+    <!-- Left Page -->
+    <path d="M128 176c36-24 84-24 120 0v192c-36-24-84-24-120 0V176z" opacity="0.95" />
+    <!-- Right Page -->
+    <path d="M264 176c36-24 84-24 120 0v192c-36-24-84-24-120 0V176z" opacity="0.95" />
+    <!-- Center Spine Divider -->
+    <rect x="252" y="160" width="8" height="216" rx="4" fill="#DBEAFE" />
+    <!-- Bookmark ribbon -->
+    <path d="M256 160v120l-16-12-16 12V160h32z" fill="#FCD34D" />
+  </g>
+</svg>
