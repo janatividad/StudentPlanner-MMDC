@@ -1,0 +1,13 @@
+{
+  "name": "student-planner-backend",
+  "version": "1.0.0",
+  "description": "Backend API service scaffold for Student Planner MMDC",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": ["student-planner", "api", "node"],
+  "author": "",
+  "license": "ISC"
+}

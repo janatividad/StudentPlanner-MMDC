@@ -1,0 +1,14 @@
+{
+  "name": "student-planner-mmdc",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Student Planner MMDC - Professional Frontend & Backend Code Structure",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "python": "python3 -m http.server 3000"
+  },
+  "keywords": ["student-planner", "frontend", "vanilla-js"],
+  "author": "",
+  "license": "MIT"
+}

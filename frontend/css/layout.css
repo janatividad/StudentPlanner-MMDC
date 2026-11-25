@@ -1,0 +1,143 @@
+/* Application Layout & Navigation */
+#shell {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+aside {
+  width: 260px;
+  flex: none;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 12px 8px 24px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  transition: transform 0.2s ease;
+}
+
+aside[hidden] {
+  display: none;
+}
+
+.st {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sh {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sh button {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+  color: var(--muted);
+}
+
+.si {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+  border: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.si:hover {
+  background: var(--hover);
+}
+
+.si[aria-current="page"] {
+  background: var(--gbg);
+  font-weight: 600;
+}
+
+.pr {
+  position: relative;
+}
+
+.pr .si {
+  padding-right: 36px;
+}
+
+.pr .dots {
+  position: absolute;
+  right: 2px;
+  top: 4px;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pr:hover .dots,
+.pr:focus-within .dots,
+.pr .dots[aria-expanded="true"] {
+  opacity: 1;
+}
+
+main {
+  flex: 1;
+  min-width: 0;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 16px 64px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 720px) {
+  aside {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    height: auto;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    box-shadow: 0 2px 6px rgba(27, 36, 48, 0.25);
+    width: 280px;
+  }
+  .si {
+    min-height: 44px;
+  }
+}

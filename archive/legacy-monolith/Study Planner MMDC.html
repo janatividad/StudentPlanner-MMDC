@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Student Planner MMDC</title>
+  <style>
+    :root {
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      --canvas: #FFFFFF;
+      --surface: #F7F8FA;
+      --hover: #F1F3F7;
+      --text: #1B2430;
+      --muted: #6B7280;
+      --accent: #1D4ED8;
+      --accent-text: #FFFFFF;
+      --border: #E3E7EE;
+      --input: #64748B;
+      --g: #4B5563;
+      --gbg: #EEF0F4;
+      --b: #1E40AF;
+      --bbg: #DBEAFE;
+      --ok: #166534;
+      --okbg: #DCFCE7;
+      --od: #991B1B;
+      --odbg: #FEE2E2;
+      --soon: #92400E;
+      --soonbg: #FEF3C7;
+      color-scheme: light
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --canvas: #191919;
+        --surface: #202020;
+        --hover: #262626;
+        --text: #E8E8E8;
+        --muted: #9B9B9B;
+        --accent: #6B93FF;
+        --accent-text: #0B1220;
+        --border: #333;
+        --input: #8A94A6;
+        --g: #B8B8B8;
+        --gbg: #333;
+        --b: #93B4FF;
+        --bbg: #1E2F57;
+        --ok: #86EFAC;
+        --okbg: #14391F;
+        --od: #FCA5A5;
+        --odbg: #4A1D1D;
+        --soon: #FCD34D;
+        --soonbg: #433512;
+        color-scheme: dark
+      }
+    }
+
+    html {
+      scroll-padding-top: env(safe-area-inset-top, 0px)
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font: 16px/24px Inter, system-ui, -apple-system, "Segoe UI", sans-serif
+    }
+
+    #shell {
+      display: flex;
+      align-items: flex-start;
+      min-height: 100%
+    }
+
+    aside {
+      width: 260px;
+      flex: none;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 12px 8px 24px;
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+      overflow: auto
+    }
+
+    aside[hidden] {
+      display: none
+    }
+
+    .si {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 0 8px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis
+    }
+
+    .si:hover {
+      background: var(--hover)
+    }
+
+    .si[aria-current=page] {
+      background: var(--gbg);
+      font-weight: 600
+    }
+
+    .sh {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    .sh button {
+      min-height: 28px;
+      min-width: 28px;
+      padding: 0;
+      justify-content: center;
+      border: 0;
+      color: var(--muted)
+    }
+
+    .st {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px
+    }
+
+    button.si {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      color: var(--text);
+      padding: 0 8px;
+      text-align: left
+    }
+
+    button.si:hover {
+      background: var(--hover)
+    }
+
+    .pr {
+      position: relative
+    }
+
+    .pr .si {
+      padding-right: 36px
+    }
+
+    .pr .dots {
+      position: absolute;
+      right: 2px;
+      top: 4px;
+      min-height: 28px;
+      min-width: 28px;
+      padding: 0;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      opacity: 0
+    }
+
+    .pr:hover .dots,
+    .pr:focus-within .dots,
+    .pr .dots[aria-expanded=true] {
+      opacity: 1
+    }
+
+    @media(hover:none) {
+      .pr .dots {
+        opacity: 1
+      }
+    }
+
+    .menu {
+      position: absolute;
+      right: 4px;
+      top: 34px;
+      z-index: 30;
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      min-width: 190px;
+      box-shadow: 0 2px 6px rgba(27, 36, 48, .25)
+    }
+
+    .dg {
+      color: var(--od) !important
+    }
+
+    .scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 16px
+    }
+
+    .dlg {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 2px 6px rgba(27, 36, 48, .25)
+    }
+
+    button.danger {
+      background: var(--odbg);
+      color: var(--od);
+      border-color: var(--od)
+    }
+
+    main {
+      flex: 1;
+      min-width: 0;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 8px 16px 64px
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      margin-bottom: 8px
+    }
+
+    @media(max-width:720px) {
+      aside {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 20;
+        height: auto;
+        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+        box-shadow: 0 2px 6px rgba(27, 36, 48, .25);
+        width: 280px
+      }
+
+      .si {
+        min-height: 44px
+      }
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 36px;
+      margin: 0
+    }
+
+    h2 {
+      font-size: 20px;
+      line-height: 28px;
+      margin: 32px 0 8px
+    }
+
+    .meta {
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--muted)
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .sp {
+      justify-content: space-between
+    }
+
+    a {
+      color: inherit;
+      text-decoration-color: var(--border);
+      text-underline-offset: 3px
+    }
+
+    a:hover {
+      text-decoration-color: currentColor
+    }
+
+    a.l {
+      color: var(--accent)
+    }
+
+    button,
+    .btn {
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--canvas);
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none
+    }
+
+    button:hover {
+      background: var(--hover)
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent)
+    }
+
+    button.ghost {
+      border-color: transparent;
+      color: var(--muted)
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px
+    }
+
+    input,
+    select,
+    textarea {
+      font: inherit;
+      color: var(--text);
+      background: var(--canvas);
+      border: 1px solid var(--input);
+      border-radius: 8px;
+      min-height: 44px;
+      padding: 8px 12px;
+      width: 100%
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin: 16px 0 4px
+    }
+
+    label small {
+      font-weight: 400;
+      color: var(--muted)
+    }
+
+    .err {
+      color: var(--od);
+      font-size: 14px;
+      margin-top: 4px
+    }
+
+    .wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 640px;
+      font-size: 14px;
+      line-height: 20px
+    }
+
+    th {
+      text-align: left;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--surface);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle
+    }
+
+    tr:last-child td {
+      border-bottom: 0
+    }
+
+    tbody tr:hover {
+      background: var(--hover)
+    }
+
+    td.n {
+      font-weight: 600;
+      min-width: 180px;
+      overflow-wrap: anywhere
+    }
+
+    td.c {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .add {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-top: 1px solid var(--border);
+      border-radius: 0;
+      color: var(--muted);
+      min-height: 44px
+    }
+
+    .pill,
+    select.pill {
+      display: inline-block;
+      width: auto;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      appearance: auto
+    }
+
+    .ns {
+      background: var(--gbg);
+      color: var(--g)
+    }
+
+    .ip {
+      background: var(--bbg);
+      color: var(--b)
+    }
+
+    .dn {
+      background: var(--okbg);
+      color: var(--ok)
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      padding: 0 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 6px
+    }
+
+    .od {
+      background: var(--odbg);
+      color: var(--od)
+    }
+
+    .soon {
+      background: var(--soonbg);
+      color: var(--soon)
+    }
+
+    .bar {
+      display: inline-block;
+      width: 72px;
+      height: 6px;
+      background: var(--gbg);
+      border-radius: 3px;
+      overflow: hidden;
+      vertical-align: middle;
+      margin-right: 6px
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--accent)
+    }
+
+    .tabs button {
+      min-height: 36px;
+      border-radius: 6px;
+      font-size: 14px
+    }
+
+    .tabs button[aria-pressed=true] {
+      background: var(--gbg);
+      font-weight: 600
+    }
+
+    .title {
+      font-size: 28px;
+      line-height: 36px;
+      font-weight: 700;
+      border: 0;
+      padding: 0;
+      min-height: 44px;
+      background: transparent
+    }
+
+    .props {
+      margin: 8px 0
+    }
+
+    .prow {
+      display: grid;
+      grid-template-columns: 24px 200px 1fr 40px;
+      gap: 2px 8px;
+      align-items: center;
+      border-radius: 6px
+    }
+
+    .prow.over {
+      box-shadow: 0 -2px 0 var(--accent)
+    }
+
+    .prow.overb {
+      box-shadow: 0 2px 0 var(--accent)
+    }
+
+    .prow.drag {
+      opacity: .4
+    }
+
+    .dh {
+      cursor: grab;
+      color: var(--muted);
+      min-height: 36px;
+      min-width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      user-select: none;
+      border-radius: 6px
+    }
+
+    .prow:hover .dh,
+    .dh:focus-visible {
+      opacity: 1
+    }
+
+    .dh:hover {
+      background: var(--hover)
+    }
+
+    @media(hover:none) {
+      .dh {
+        opacity: 1
+      }
+    }
+
+    .props>span.k {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 6px 8px
+    }
+
+    .props input,
+    .props textarea,
+    .props select.pill {
+      border-color: transparent;
+      background: transparent;
+      padding: 6px 8px;
+      min-height: 36px
+    }
+
+    .props input:hover,
+    .props textarea:hover {
+      background: var(--hover)
+    }
+
+    .props input:focus,
+    .props textarea:focus {
+      border-color: var(--input);
+      background: var(--canvas)
+    }
+
+    .props input.pl {
+      color: var(--muted);
+      font-size: 14px;
+      flex: 1;
+      min-width: 0
+    }
+
+    .lw {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 2px
+    }
+
+    .ti {
+      min-height: 32px;
+      min-width: 32px;
+      padding: 0;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      flex: none
+    }
+
+    .tmenu {
+      position: absolute;
+      left: 0;
+      top: 38px;
+      z-index: 25;
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      width: 220px;
+      max-height: 320px;
+      overflow: auto;
+      box-shadow: 0 2px 6px rgba(27, 36, 48, .25)
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      padding: 4px 0
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      background: var(--gbg);
+      color: var(--g);
+      font-size: 14px
+    }
+
+    .chip.on {
+      background: var(--bbg);
+      color: var(--b)
+    }
+
+    .chip .cb,
+    .chip .cx {
+      min-height: 28px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      padding: 0 8px;
+      font-size: 14px
+    }
+
+    .chip .cx {
+      padding: 0 6px 0 0;
+      opacity: .7
+    }
+
+    .props input.oi {
+      width: 130px;
+      min-height: 28px;
+      padding: 2px 8px
+    }
+
+    .props .x {
+      min-height: 36px;
+      min-width: 36px;
+      padding: 0;
+      justify-content: center;
+      border: 0;
+      color: var(--muted)
+    }
+
+    .props input::placeholder,
+    .props textarea::placeholder {
+      color: var(--muted);
+      opacity: .7
+    }
+
+    @media(max-width:560px) {
+      .prow {
+        grid-template-columns: 24px 1fr 40px
+      }
+
+      .prow .v {
+        grid-column: 2/4
+      }
+    }
+
+    .banner {
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--odbg);
+      color: var(--od);
+      margin: 12px 0
+    }
+
+    .ql a {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin: 0 6px 6px 0;
+      font-size: 14px
+    }
+
+    #live {
+      position: absolute;
+      left: -9999px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="shell">
+    <aside id="side" aria-label="Sidebar"></aside>
+    <main id="app"></main>
+  </div>
+  <div id="modal"></div>
+  <div id="live" role="status" aria-live="polite"></div>
+  <script>
+    const TZ = 'Asia/Manila', KEY = 'study-planner-mmdc-v3';
+    const ST = [['not_started', 'Not started', 'ns'], ['in_progress', 'In progress', 'ip'], ['done', 'Done', 'dn']];
+    const stOf = v => ST.find(s => s[0] === v) || ST[0];
+    const today = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+    const addDays = (d, n) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10) };
+    const fmt = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const okUrl = u => { try { const x = new URL(u); return x.protocol === 'http:' || x.protocol === 'https:' } catch { return false } };
+    let pc = 0; const nid = () => 'p' + Date.now().toString(36) + (pc++);
+    const DEF = [['Code', 'code'], ['Section', 'section'], ['Course description', 'description'], ['Credits', 'credits'], ['Course homepage', 'homepage'], ['Syllabus', 'syllabus'], ['Mentoring', 'mentoring'], ['Recording', 'recording'], ['Sync schedule', 'sync']];
+    const guess = l => /homepage|syllabus|recording|link|url/i.test(l) ? 'url' : /credit/i.test(l) ? 'number' : 'text';
+    const TYPES = [['text', 'Text', '≡'], ['number', 'Number', '#'], ['select', 'Select', '◉'], ['multi', 'Multi-select', '☰'], ['status', 'Status', '◌'], ['date', 'Date', '📅'], ['checkbox', 'Checkbox', '☑'], ['url', 'URL', '🔗'], ['email', 'Email', '@'], ['phone', 'Phone', '📞']];
+    const typeOf = t => TYPES.find(x => x[0] === t) || TYPES[0];
+    const blank = (id, name) => ({ id, name, status: 'not_started', notes: '', props: DEF.map(([l]) => ({ id: nid(), label: l, value: '', type: guess(l) })) });
+    let S, saveFail = false;
+    function load() {
+      const rd = k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } };
+      let s = rd(KEY);
+      if (!s || !s.subjects) {
+        const o = rd('study-planner-mmdc-v2') || rd('study-planner-mmdc-v1');
+        if (o && o.subjects) { s = { ...o, pages: [] }; s.assignments = (o.assignments || []).map(a => ({ description: '', coursera_url: '', ...a, status: a.status === 'completed' ? 'done' : a.status === 'pending' ? 'not_started' : a.status })) }
+        else s = { term: '2026–2027 Term 2', next: 10, subjects: ['Cloud Computing', 'Mobile Development Application (Backend)', 'System Integration and Architecture', 'Integrative Programming and Technologies'].map((n, i) => blank(i + 1, n)), assignments: [], links: [], pages: [] }
+      }
+      s.subjects.forEach(x => { if (!x.props) x.props = DEF.map(([l, f]) => ({ id: nid(), label: l, value: x[f] || '' })); x.status = stOf(x.status)[0]; x.props.forEach(p => { if (!p.type) p.type = guess(p.label) }) });
+      s.pages = s.pages || []; s.links = s.links || []; if (!s.projects) { s.projects = [{ id: 9, name: s.term || '2026–2027 Term 2', icon: '📚' }]; if (!(s.next > 9)) s.next = 10 } s.subjects.forEach(x => { if (!x.project_id) x.project_id = s.projects[0].id });
+      if (innerWidth < 720) s.side = false; else if (s.side === undefined) s.side = true;
+      return s
+    }
+    S = load();
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); saveFail = false } catch { saveFail = true } };
+    const say = m => document.getElementById('live').textContent = m;
+    let from = '', draft = null, errs = {}, tab = 'upcoming', arm = '', focusP = '', menu = '', confirmId = '', tmenu = '', focusO = '';
+    const app = document.getElementById('app'), side = document.getElementById('side');
+    const sub = id => S.subjects.find(s => s.id == id);
+    const cmp = (a, b) => a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : a.id - b.id;
+    const open = a => a.status !== 'done';
+    const pill = (ent, id, f, v) => { const [, , c] = stOf(v); return `<select class="pill ${c}" data-ent="${ent}" data-id="${id}" data-f="${f}" aria-label="Status">${ST.map(s => `<option value="${s[0]}"${s[0] === v ? ' selected' : ''}>${s[1]}</option>`).join('')}</select>` };
+    const lk = (u, t) => u ? `<a class="l" href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : '<span class="meta">—</span>';
+    function prog(id) {
+      const l = S.assignments.filter(a => a.subject_id == id), d = l.filter(a => a.status === 'done').length;
+      return l.length ? `<span class="bar"><i style="width:${Math.round(d / l.length * 100)}%"></i></span>${d}/${l.length} · ${Math.round(d / l.length * 100)}%` : '<span class="meta">No assignments yet.</span>'
+    }
+    const tag = (a, t) => { if (!open(a)) return ''; return a.due_date < t ? '<span class="tag od">Overdue</span>' : a.due_date <= addDays(t, 6) ? '<span class="tag soon">Due soon</span>' : '' };
+    const labels = (list = S.subjects) => { const seen = []; list.forEach(s => s.props.forEach(p => { const l = p.label.trim(); if (l && !seen.some(x => x.toLowerCase() === l.toLowerCase())) seen.push(l) })); return seen };
+    const pp = (s, l) => s.props.find(p => p.label.trim().toLowerCase() === l.toLowerCase());
+    const pv = (s, l) => { const p = pp(s, l); return p ? p.value : '' };
+    const disp = p => {
+      if (!p) return ''; const t = p.type || 'text', v = p.value;
+      if (t === 'checkbox') return v === true ? '✓' : '';
+      if (t === 'multi') return (v || []).map(x => `<span class="pill ns">${esc(x)}</span>`).join(' ');
+      if (t === 'select' || t === 'status') return v ? `<span class="pill ${t === 'status' && v === 'Done' ? 'dn' : t === 'status' && v === 'In progress' ? 'ip' : 'ns'}">${esc(v)}</span>` : '';
+      if (t === 'date') return v ? fmt(v) : '';
+      return okUrl(v) ? lk(v, 'Open') : esc(v)
+    };
+    const typeBtn = (s, p) => `<button class="ti" data-act="ptype" data-id="${s.id}" data-pid="${p.id}" aria-haspopup="menu" aria-expanded="${tmenu === p.id}" aria-label="Property type: ${typeOf(p.type)[1]}. Change type" title="${typeOf(p.type)[1]}">${typeOf(p.type)[2]}</button>`;
+    const typeMenu = (s, p) => `<div class="tmenu" role="menu">${TYPES.map(([k, l, i]) => `<button class="si" role="menuitemradio" aria-checked="${(p.type || 'text') === k}" data-act="settype" data-id="${s.id}" data-pid="${p.id}" data-t="${k}"><span style="width:20px;text-align:center">${i}</span> ${l}<span style="margin-left:auto">${(p.type || 'text') === k ? '✓' : ''}</span></button>`).join('')}</div>`;
+    const valEd = (s, p) => {
+      const t = p.type || 'text', a = `data-ent="prop" data-id="${s.id}" data-pid="${p.id}" data-k="value"`, ph = p.label.trim() ? 'Add ' + esc(p.label.toLowerCase()) : 'Add a value';
+      if (t === 'checkbox') return `<input type="checkbox" ${a} ${p.value === true ? 'checked' : ''} style="width:20px;min-height:20px;margin:8px" aria-label="${esc(p.label) || 'Checkbox'}">`;
+      if (t === 'select' || t === 'multi' || t === 'status') {
+        const sel = v => t === 'multi' ? (p.value || []).includes(v) : p.value === v;
+        return `<div class="chips">${(p.options || []).map(o => `<span class="chip ${sel(o) ? 'on' : ''}"><button class="cb" data-act="opt" data-id="${s.id}" data-pid="${p.id}" data-o="${esc(o)}" aria-pressed="${sel(o)}">${esc(o)}</button><button class="cx" data-act="delopt" data-id="${s.id}" data-pid="${p.id}" data-o="${esc(o)}" aria-label="Remove option ${esc(o)}">×</button></span>`).join('')}<input class="oi" data-ent="optadd" data-id="${s.id}" data-pid="${p.id}" placeholder="Add option" aria-label="Add option, then press Enter"></div>`
+      }
+      if (t === 'date') return `<input type="date" ${a} value="${esc(p.value)}">`;
+      if (t === 'number') return `<input type="number" step="any" ${a} value="${esc(p.value)}" placeholder="${ph}">`;
+      if (t === 'text' && /description/i.test(p.label)) return `<textarea rows="2" ${a} placeholder="${ph}">${esc(p.value)}</textarea>`;
+      return `<input ${t === 'email' ? 'type="email"' : t === 'phone' ? 'type="tel"' : ''} ${a} value="${esc(p.value)}" placeholder="${ph}">${t === 'url' && okUrl(p.value) ? `<a class="l meta" href="${esc(p.value)}" target="_blank" rel="noopener" style="padding:0 8px">Open link</a>` : ''}`
+    };
+
+    function subjTable(pid) {
+      const subs = S.subjects.filter(s => s.project_id == pid), L = labels(subs); return `<div class="wrap"><table><thead><tr><th>Name</th><th>Progress</th>${L.map(l => `<th>${esc(l)}</th>`).join('')}</tr></thead><tbody>
+ ${subs.map(s => `<tr><td class="n"><a href="#subject-${s.id}">${esc(s.name) || 'Untitled'}</a></td><td>${prog(s.id)}</td>${L.map(l => `<td class="c">${disp(pp(s, l))}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="3" class="meta">No subjects yet. Add your first subject.</td></tr>`}</tbody></table><button class="add" data-act="addsub" data-id="${pid}">+ New subject</button></div>`
+    }
+    function asgTable(list, showSub, empty) {
+      const t = today(); return `<div class="wrap"><table><thead><tr><th>Title</th>${showSub ? '<th>Subject</th>' : ''}<th>Due date</th><th>Status</th><th>Coursera</th><th>Link</th></tr></thead><tbody>
+ ${list.map(a => { const s = sub(a.subject_id); return `<tr><td class="n"><a href="#edit-${a.id}" data-from>${esc(a.title)}</a></td>${showSub ? `<td>${s ? `<a href="#subject-${s.id}">${esc(s.name) || 'Untitled'}</a>` : ''}</td>` : ''}<td>${fmt(a.due_date)}${tag(a, t)}</td><td>${pill('asg', a.id, 'status', a.status)}</td><td>${lk(a.coursera_url, 'Coursera')}</td><td>${lk(a.resource_url, 'Open')}</td></tr>` }).join('') || `<tr><td colspan="6" class="meta">${empty}</td></tr>`}</tbody></table></div>`
+    }
+
+    const projList = () => `<h2>Projects</h2><div class="wrap"><table><thead><tr><th>Project</th><th>Subjects</th><th>Open work</th></tr></thead><tbody>${S.projects.map(p => { const ids = S.subjects.filter(s => s.project_id == p.id).map(s => s.id); return `<tr><td class="n"><a href="#project-${p.id}">${esc(p.icon)} ${esc(p.name) || 'Untitled'}</a></td><td>${ids.length}</td><td>${S.assignments.filter(a => ids.includes(a.subject_id) && open(a)).length}</td></tr>` }).join('') || '<tr><td colspan="3" class="meta">No projects yet.</td></tr>'}</tbody></table><button class="add" data-act="addproj">+ New project</button></div>`;
+    function dash(pid) {
+      const t = today(), pr = S.projects.find(x => x.id == pid), ids = new Set(S.subjects.filter(s => pid == null || s.project_id == pid).map(s => s.id)), all = S.assignments.filter(a => ids.has(a.subject_id)).sort(cmp), p = all.filter(open);
+      if (pid == null) return `<div style="font-size:40px;line-height:48px">🏠</div><h1>Home</h1><div class="meta">${fmt(t)} · ${new Date().toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' })} (Asia/Manila)</div>${projList()}`;
+      const f = { upcoming: p.filter(a => a.due_date >= t), soon: p.filter(a => a.due_date >= t && a.due_date <= addDays(t, 6)), overdue: p.filter(a => a.due_date < t), all }[tab];
+      const tabs = [['upcoming', 'Upcoming'], ['soon', 'Due soon'], ['overdue', 'Overdue'], ['all', 'All']];
+      return `<div class="row sp"><div style="flex:1 1 280px"><div style="font-size:40px;line-height:48px">${pr ? esc(pr.icon) : '🏠'}</div>${pr ? `<input class="title" data-ent="proj" data-id="${pid}" data-f="name" value="${esc(pr.name)}" placeholder="Untitled project" aria-label="Project name" style="width:100%">` : '<h1>Home</h1>'}<div class="meta">Study Planner · Today is ${fmt(t)} (Asia/Manila)</div></div><a class="btn primary" href="#new" data-from>+ Add assignment</a></div>
+ ${saveFail ? '<div class="banner" role="alert">Could not save to this browser. Changes may be lost on refresh.</div>' : ''}
+ ${pr ? `<h2>Subjects</h2>${subjTable(pid)}` : projList()}
+ <h2>Assignments</h2>
+ <div class="tabs row" style="margin-bottom:8px">${tabs.map(([k, l]) => `<button data-tab="${k}" aria-pressed="${tab === k}">${l}${k === 'overdue' && p.some(a => a.due_date < t) ? ' (' + p.filter(a => a.due_date < t).length + ')' : ''}</button>`).join('')}</div>
+ ${asgTable(f, true, tab === 'overdue' ? 'Nothing overdue.' : 'No work due. Add an assignment to get started.')}
+ <h2>Quick links</h2><div class="ql">${S.links.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a><button class="ghost" style="min-height:28px;padding:0 6px;margin-right:6px" data-act="dellink" data-id="${l.id}" aria-label="Remove ${esc(l.label)}">×</button>`).join('') || '<span class="meta">No quick links yet.</span>'}</div>
+ <form data-form="link" class="row" style="margin-top:8px"><input name="label" placeholder="Label, e.g. MyCamu Portal" style="flex:1 1 160px;width:auto" aria-label="Label"><input name="url" placeholder="https://" style="flex:2 1 220px;width:auto" aria-label="URL"><button>Add link</button></form><div class="err" id="lerr"></div>`}
+
+    function subjectPage(id) {
+      const s = sub(id); if (!s) return '<h1>Subject not found</h1>';
+      const as = S.assignments.filter(a => a.subject_id == id).sort(cmp);
+      return `<div class="row sp"><input class="title" data-ent="sub" data-id="${s.id}" data-f="name" value="${esc(s.name)}" placeholder="Untitled subject" aria-label="Subject name" style="flex:1 1 260px;width:auto"><a class="btn primary" href="#new-${s.id}" data-from>+ Add assignment</a></div>
+ <div class="props">
+ ${s.props.map(p => `<div class="prow" data-prow="${p.id}" data-sid="${s.id}"><span class="dh" data-drag draggable="true" role="button" tabindex="0" title="Drag to reorder" aria-label="Reorder ${esc(p.label) || 'property'}. Use arrow keys to move up or down">⋮⋮</span><div class="lw">${typeBtn(s, p)}<input class="pl" data-ent="prop" data-id="${s.id}" data-pid="${p.id}" data-k="label" value="${esc(p.label)}" placeholder="Property name" aria-label="Property name">${tmenu === p.id ? typeMenu(s, p) : ''}</div><div class="v">${valEd(s, p)}</div><button class="x ghost" data-act="delprop" data-id="${s.id}" data-pid="${p.id}" aria-label="Delete property ${esc(p.label)}">×</button></div>`).join('')}
+ </div><button class="ghost" data-act="addprop" data-id="${s.id}">+ Add a property</button>
+ <div class="meta" style="margin-top:8px">Progress: ${prog(s.id)}</div>
+ <h2>Assignments</h2>${asgTable(as, false, 'No assignments yet. Add the first one.')}
+ <h2>Notes</h2><textarea rows="6" data-ent="sub" data-id="${s.id}" data-f="notes" placeholder="Add notes">${esc(s.notes)}</textarea>
+ <p style="margin-top:32px"><button class="ghost" data-act="delsub" data-id="${s.id}">${arm === 's' + s.id ? `Confirm: delete subject and ${as.length} assignment(s)` : 'Delete subject'}</button></p>`
+    }
+
+    function pagePage(id) {
+      const p = S.pages.find(x => x.id == id); if (!p) return '<h1>Page not found</h1>';
+      return `<div class="row"><input data-ent="page" data-id="${p.id}" data-f="icon" value="${esc(p.icon)}" maxlength="4" aria-label="Icon" style="width:64px;font-size:28px;text-align:center"><input class="title" data-ent="page" data-id="${p.id}" data-f="title" value="${esc(p.title)}" placeholder="Untitled" aria-label="Page title" style="flex:1 1 200px;width:auto"></div>
+ <textarea rows="16" data-ent="page" data-id="${p.id}" data-f="body" placeholder="Write something, plan a space, or paste notes" style="margin-top:12px">${esc(p.body)}</textarea>
+ <p style="margin-top:24px"><button class="ghost" data-act="delpage" data-id="${p.id}">${arm === 'g' + p.id ? 'Confirm delete page' : 'Delete page'}</button></p>`
+    }
+
+    function formPage(a, pre) {
+      const d = draft || a || { title: '', subject_id: pre || '', due_date: '', status: 'not_started', notes: '', description: '', coursera_url: '', resource_url: '' };
+      const f = k => errs[k] ? `<div class="err" id="e-${k}">${errs[k]}</div>` : '';
+      const inp = (k, l, extra = '', ph = '') => `<label for="f-${k}">${l}</label><input id="f-${k}" name="${k}" value="${esc(d[k])}" ${extra} placeholder="${ph}">${f(k)}`;
+      return `<nav class="meta"><a href="#" data-cancel>← Cancel</a></nav><h1>${a ? 'Edit assignment' : 'Add assignment'}</h1><form data-form="asg" data-id="${a ? a.id : ''}" novalidate style="max-width:640px">
+ ${inp('title', 'Title', '', 'Add a title')}
+ <label for="f-subject_id">Subject</label><select id="f-subject_id" name="subject_id"><option value="">Choose a subject</option>${S.subjects.map(s => `<option value="${s.id}"${s.id == d.subject_id ? ' selected' : ''}>${esc((S.projects.find(p => p.id == s.project_id) || {}).name || '')} – ${esc(s.name) || 'Untitled'}</option>`).join('')}</select>${f('subject_id')}
+ ${inp('due_date', 'Due date', 'type="date"')}
+ <label for="f-status">Status</label><select id="f-status" name="status">${ST.map(s => `<option value="${s[0]}"${s[0] === d.status ? ' selected' : ''}>${s[1]}</option>`).join('')}</select>
+ <label for="f-notes">Notes <small>(optional)</small></label><textarea id="f-notes" name="notes" rows="3">${esc(d.notes)}</textarea>
+ <label for="f-description">Description <small>(optional)</small></label><textarea id="f-description" name="description" rows="4" placeholder="What does this assignment require?">${esc(d.description)}</textarea>
+ ${inp('coursera_url', 'Coursera link <small>(optional)</small>', '', 'https://www.coursera.org/…')}
+ ${inp('resource_url', 'Link <small>(optional)</small>', '', 'https://')}
+ <p class="row" style="margin-top:24px"><button class="primary">Save assignment</button><button type="button" data-cancel>Cancel</button>${a ? `<button type="button" class="ghost" data-act="delasg" data-id="${a.id}">${arm === 'a' + a.id ? 'Confirm delete' : 'Delete'}</button>` : ''}</p></form>`
+    }
+
+    function renderModal() {
+      const m = document.getElementById('modal'), p = S.projects.find(x => x.id == confirmId);
+      if (!confirmId || !p) { m.innerHTML = ''; return }
+      const n = S.subjects.filter(s => s.project_id == p.id).length;
+      m.innerHTML = `<div class="scrim"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dt"><h2 id="dt" style="margin:0 0 8px">Delete project?</h2><p>“${esc(p.name) || 'Untitled'}”, its ${n} subject(s) and all their assignments will be permanently deleted.</p><div class="row" style="justify-content:flex-end"><button id="cx" data-act="cancelmodal">Cancel</button><button class="danger" data-act="delprojok" data-id="${p.id}">Delete project</button></div></div></div>`;
+      document.getElementById('cx').focus()
+    }
+    function renderSide() {
+      const h = location.hash.slice(1), cur = x => h === x ? ' aria-current="page"' : '';
+      side.hidden = !S.side;
+      side.innerHTML = `<div class="st"><span class="meta" style="padding-left:8px">Study Planner</span><button class="ghost" data-act="side" aria-label="Hide sidebar" style="min-height:36px">«</button></div>
+ <a class="si" href="#"${cur('')}>🏠 Home</a>
+ 
+ <div class="sh"><span>Projects</span><button data-act="addproj" aria-label="New project">+</button></div>
+ ${S.projects.map(p => `<div class="pr"><a class="si" href="#project-${p.id}"${cur('project-' + p.id)}>${esc(p.icon) || '📚'} ${esc(p.name) || 'Untitled'}</a><button class="dots" data-act="menu" data-id="${p.id}" aria-label="Project options" aria-haspopup="menu" aria-expanded="${menu == p.id}">⋯</button>${menu == p.id ? `<div class="menu" role="menu"><a class="si" role="menuitem" href="${location.href.split('#')[0]}#project-${p.id}" target="_blank" rel="noopener">Open in new tab</a><button class="si dg" role="menuitem" data-act="delproj" data-id="${p.id}">Delete project</button></div>` : ''}</div>`).join('') || '<div class="meta" style="padding:0 8px">No projects yet.</div>'}
+ 
+ 
+ 
+ `}
+    function render() {
+      const h = location.hash.slice(1); let m, body;
+      if ((m = h.match(/^subject-(\d+)$/))) body = subjectPage(m[1]);
+      else if ((m = h.match(/^page-(\d+)$/))) body = pagePage(m[1]);
+      else if ((m = h.match(/^new(?:-(\d+))?$/))) body = formPage(null, m[1]);
+      else if ((m = h.match(/^edit-(\d+)$/))) { const a = S.assignments.find(x => x.id == m[1]); body = a ? formPage(a) : '<h1>Assignment not found</h1>' }
+      else if ((m = h.match(/^project-(\d+)$/))) body = S.projects.some(p => p.id == m[1]) ? dash(+m[1]) : '<h1>Project not found</h1>';
+      else body = dash(null);
+      app.innerHTML = `<div class="top">${S.side ? '' : '<button class="ghost" data-act="side" aria-label="Show sidebar" aria-expanded="false">☰</button>'}${h ? '<a class="meta" href="#" style="margin-left:8px">Home</a>' : ''}</div>` + body;
+      renderSide();
+      if (focusP) { const el = app.querySelector(`[data-pid="${focusP}"][data-k="label"]`); if (el) { el.focus(); el.select() } focusP = '' }
+      if (focusO) { const el = app.querySelector(`[data-ent="optadd"][data-pid="${focusO}"]`); if (el) el.focus(); focusO = '' }
+    }
+    function goBack(a) { draft = null; errs = {}; arm = ''; const target = from || (a && sub(a.subject_id) ? 'subject-' + a.subject_id : ''); const cur = location.hash.slice(1); from = ''; if (cur === target) render(); else location.hash = target }
+
+    document.addEventListener('click', e => {
+      if (tmenu && !e.target.closest('.tmenu,[data-act="ptype"]')) setTimeout(() => { tmenu = ''; render() }, 0);
+      if (e.target.classList.contains('scrim')) { confirmId = ''; renderModal(); return }
+      if (menu && !e.target.closest('.menu,[data-act="menu"]')) setTimeout(() => { menu = ''; renderSide() }, 0);
+      if (e.target.closest('.menu a')) setTimeout(() => { menu = ''; renderSide() }, 0);
+      if (e.target.closest('aside a,aside [data-act="addpage"],aside [data-act="addproj"]') && innerWidth < 720) { S.side = false; side.hidden = true }
+      const el = e.target.closest('[data-from],[data-cancel],[data-act],[data-tab]'); if (!el) return;
+      if ('from' in el.dataset) { from = location.hash.slice(1); draft = null; errs = {}; return }
+      if ('cancel' in el.dataset) { e.preventDefault(); const m = location.hash.match(/edit-(\d+)/); goBack(m ? S.assignments.find(a => a.id == m[1]) : null); return }
+      if ('tab' in el.dataset) { tab = el.dataset.tab; render(); return }
+      const id = el.dataset.id, act = el.dataset.act;
+      if (act === 'side') { S.side = !S.side; save(); render() }
+      if (act === 'addsub') { const s = blank(S.next++, ''); s.project_id = +id; S.subjects.push(s); save(); location.hash = 'subject-' + s.id }
+      if (act === 'addproj') { const p = { id: S.next++, name: '', icon: '📚' }; S.projects.push(p); save(); location.hash = 'project-' + p.id }
+      if (act === 'menu') { menu = menu === id ? '' : id; renderSide(); return }
+      if (act === 'ptype') { const pid = el.dataset.pid; tmenu = tmenu === pid ? '' : pid; render(); return }
+      if (act === 'settype') {
+        const s = sub(id), p = s.props.find(x => x.id === el.dataset.pid), t = el.dataset.t, tx = ['text', 'url', 'email', 'phone'], s2 = ['select', 'status'], v = p.value, old = p.type || 'text'; let nv = '';
+        if (tx.includes(t) && tx.includes(old)) nv = v; else if (s2.includes(t) && s2.includes(old)) nv = v; else if (t === 'number' && !isNaN(parseFloat(v))) nv = v; else if (t === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(v)) nv = v; else if (t === 'multi') nv = s2.includes(old) && v ? [v] : []; else if (t === 'checkbox') nv = false;
+        if ((t === 'select' || t === 'multi' || t === 'status') && !(p.options || []).length) p.options = t === 'status' ? ['Not started', 'In progress', 'Done'] : [];
+        p.type = t; p.value = nv; tmenu = ''; save(); render(); say('Property type set to ' + typeOf(t)[1]); return
+      }
+      if (act === 'opt') {
+        const s = sub(id), p = s.props.find(x => x.id === el.dataset.pid), o = el.dataset.o;
+        if (p.type === 'multi') { const a = Array.isArray(p.value) ? p.value : []; p.value = a.includes(o) ? a.filter(x => x !== o) : [...a, o] } else p.value = p.value === o ? '' : o;
+        save(); render(); return
+      }
+      if (act === 'delopt') { const s = sub(id), p = s.props.find(x => x.id === el.dataset.pid), o = el.dataset.o; p.options = (p.options || []).filter(x => x !== o); p.value = Array.isArray(p.value) ? p.value.filter(x => x !== o) : (p.value === o ? '' : p.value); save(); render(); return }
+      if (act === 'cancelmodal') { confirmId = ''; renderModal(); return }
+      if (act === 'delproj') { menu = ''; confirmId = id; renderSide(); renderModal(); return }
+      if (act === 'delprojok') { confirmId = ''; renderModal(); const sids = S.subjects.filter(s => s.project_id == id).map(s => s.id); S.assignments = S.assignments.filter(a => !sids.includes(a.subject_id)); S.subjects = S.subjects.filter(s => s.project_id != id); S.projects = S.projects.filter(p => p.id != id); save(); arm = ''; { const h = location.hash.slice(1); if (h === 'project-' + id || (h.startsWith('subject-') && !sub(h.slice(8))) || (h.startsWith('edit-') && !S.assignments.some(a => a.id == h.slice(5)))) location.hash = ''; render(); say('Project deleted.') } }
+      if (act === 'addpage') { const p = { id: S.next++, title: '', icon: '📄', body: '' }; S.pages.push(p); save(); location.hash = 'page-' + p.id }
+      if (act === 'addprop') { const s = sub(id), p = { id: nid(), label: '', value: '' }; s.props.push(p); save(); focusP = p.id; render() }
+      if (act === 'delprop') { const s = sub(id); s.props = s.props.filter(p => p.id !== el.dataset.pid); save(); render() }
+      if (act === 'delsub') { if (arm !== 's' + id) { arm = 's' + id; render(); return } const sj = sub(id); S.assignments = S.assignments.filter(a => a.subject_id != id); S.subjects = S.subjects.filter(s => s.id != id); save(); arm = ''; location.hash = sj ? 'project-' + sj.project_id : '' }
+      if (act === 'delpage') { if (arm !== 'g' + id) { arm = 'g' + id; render(); return } S.pages = S.pages.filter(p => p.id != id); save(); arm = ''; location.hash = '' }
+      if (act === 'delasg') { if (arm !== 'a' + id) { arm = 'a' + id; render(); return } const a = S.assignments.find(x => x.id == id); S.assignments = S.assignments.filter(x => x.id != id); save(); goBack(a) }
+      if (act === 'dellink') { S.links = S.links.filter(r => r.id != id); save(); render() }
+    });
+
+    const target = el => { const e = el.dataset.ent; if (e === 'sub') return sub(el.dataset.id); if (e === 'page') return S.pages.find(x => x.id == el.dataset.id); if (e === 'proj') return S.projects.find(x => x.id == el.dataset.id); if (e === 'asg') return S.assignments.find(x => x.id == el.dataset.id); if (e === 'prop') { const s = sub(el.dataset.id); return s && s.props.find(p => p.id === el.dataset.pid) } };
+    document.addEventListener('input', e => {
+      const el = e.target; if (el.dataset.term !== undefined) { S.term = el.value; save(); return }
+      if (!el.dataset.ent || el.tagName === 'SELECT') return; const o = target(el); if (!o) return;
+      if (el.dataset.ent === 'optadd') return; o[el.dataset.f || el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value; save();
+      if (el.dataset.f === 'name' || el.dataset.f === 'title' || el.dataset.f === 'icon' || el.dataset.k === 'label') renderSide()
+    });
+    document.addEventListener('change', e => {
+      const el = e.target; if (el.tagName !== 'SELECT' || !el.dataset.f) return; const o = target(el); if (!o) return;
+      o[el.dataset.f] = el.value; save(); say('Status set to ' + stOf(el.value)[1]); render()
+    });
+
+    document.addEventListener('submit', e => {
+      e.preventDefault(); const f = e.target, v = Object.fromEntries(new FormData(f)), k = f.dataset.form;
+      if (k === 'asg') {
+        draft = { ...v }; errs = {}; const t = v.title.trim();
+        if (!t) errs.title = 'Enter a title.'; else if (t.length > 160) errs.title = 'Use 160 characters or fewer.';
+        if (!sub(v.subject_id)) errs.subject_id = 'Choose a subject.';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v.due_date) || isNaN(new Date(v.due_date))) errs.due_date = 'Enter a valid due date.';
+        for (const u of ['coursera_url', 'resource_url']) if (v[u].trim() && !okUrl(v[u].trim())) errs[u] = 'Enter a link starting with http:// or https://.';
+        if (Object.keys(errs).length) { render(); say('Fix the highlighted fields.'); const x = document.querySelector('.err'); if (x && x.previousElementSibling) x.previousElementSibling.focus(); return }
+        const rec = { title: t, subject_id: +v.subject_id, due_date: v.due_date, status: v.status, notes: v.notes, description: v.description, coursera_url: v.coursera_url.trim(), resource_url: v.resource_url.trim() };
+        let a; if (f.dataset.id) { a = S.assignments.find(x => x.id == f.dataset.id); Object.assign(a, rec) } else { a = { id: S.next++, ...rec }; S.assignments.push(a) }
+        save(); say('Assignment saved.'); goBack(a); return
+      }
+      if (k === 'link') {
+        const err = document.getElementById('lerr'); if (!v.label.trim() || !okUrl(v.url)) { err.textContent = 'Enter a label and an http(s) URL.'; return }
+        S.links.push({ id: S.next++, label: v.label.trim(), url: v.url }); save(); render()
+      }
+    });
+    let dragId = '';
+    const reorder = (s, a, b, after) => { if (a === b) return; const i = s.props.findIndex(p => p.id === a); if (i < 0) return; const [m] = s.props.splice(i, 1); let j = s.props.findIndex(p => p.id === b); if (j < 0) j = s.props.length; s.props.splice(after ? j + 1 : j, 0, m); save() };
+    const clr = () => document.querySelectorAll('.prow.over,.prow.overb,.prow.drag').forEach(r => r.classList.remove('over', 'overb', 'drag'));
+    document.addEventListener('dragstart', e => { const h = e.target.closest && e.target.closest('[data-drag]'); if (!h) return; const row = h.closest('.prow'); dragId = row.dataset.prow; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); try { e.dataTransfer.setDragImage(row, 10, 10) } catch { } row.classList.add('drag') });
+    document.addEventListener('dragover', e => { const row = e.target.closest && e.target.closest('.prow'); if (!dragId || !row) return; e.preventDefault(); const after = e.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2; document.querySelectorAll('.prow.over,.prow.overb').forEach(r => r.classList.remove('over', 'overb')); if (row.dataset.prow !== dragId) row.classList.add(after ? 'overb' : 'over') });
+    document.addEventListener('drop', e => { const row = e.target.closest && e.target.closest('.prow'); if (!dragId || !row) return; e.preventDefault(); const s = sub(row.dataset.sid), after = e.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2; reorder(s, dragId, row.dataset.prow, after); dragId = ''; render(); say('Property moved.') });
+    document.addEventListener('dragend', () => { dragId = ''; clr() });
+    addEventListener('keydown', e => { const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return; e.preventDefault(); const row = h.closest('.prow'), s = sub(row.dataset.sid), i = s.props.findIndex(p => p.id === row.dataset.prow), j = i + (e.key === 'ArrowUp' ? -1 : 1); if (j < 0 || j >= s.props.length) return; const [m] = s.props.splice(i, 1); s.props.splice(j, 0, m); save(); render(); const nh = app.querySelector(`[data-prow="${m.id}"] .dh`); if (nh) nh.focus(); say('Moved property to position ' + (j + 1)) });
+    addEventListener('keydown', e => {
+      const el = e.target; if (e.key === 'Enter' && el.dataset && el.dataset.ent === 'optadd') { e.preventDefault(); const s = sub(el.dataset.id), p = s && s.props.find(x => x.id === el.dataset.pid), v = el.value.trim(); if (p && v && !(p.options || []).includes(v)) { (p.options = p.options || []).push(v); save(); focusO = p.id; render() } }
+      if (e.key === 'Escape' && tmenu) { tmenu = ''; render() }
+    });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && (menu || confirmId)) { menu = ''; confirmId = ''; renderSide(); renderModal() } });
+    addEventListener('hashchange', () => { window.scrollTo(0, 0); arm = ''; menu = ''; render() });
+    render();
+  </script>
+</body>
+
+</html>

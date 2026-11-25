@@ -1,0 +1,13 @@
+{
+  "name": "student-planner-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Student Planner MMDC - Frontend UI",
+  "scripts": {
+    "start": "node ../server.js",
+    "dev": "python3 -m http.server 3000"
+  },
+  "keywords": ["student-planner", "frontend"],
+  "author": "",
+  "license": "MIT"
+}
