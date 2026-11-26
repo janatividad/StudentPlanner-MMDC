@@ -54,9 +54,20 @@ export function renderAuthPage() {
               <div style="font-size: 13px; line-height: 18px; color: var(--text);">
                 <strong>Local Planner Storage Active:</strong><br>
                 All your subjects, assignments, notes, and custom properties remain saved locally in this browser's <code>localStorage</code>.
-                <span class="meta" style="display:block; margin-top: 4px;">Cloud synchronization and remote database tables are planned for a subsequent release.</span>
+                <span class="meta" style="display:block; margin-top: 4px;">Assignments can be synced with Supabase cloud.</span>
               </div>
             </div>
+          </div>
+
+          <!-- Import Local Assignments Card -->
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+            <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 6px; color: #166534;">📦 Sync Browser Assignments</h3>
+            <p style="font-size: 13px; margin: 0 0 10px; color: #14532d;">
+              Copy your local browser assignments to your Supabase account (<strong>${esc(user.email)}</strong>). Your local browser copy will remain completely intact.
+            </p>
+            <button class="btn primary" data-act="importlocal" style="font-size: 12px; min-height: 32px;">
+              Import local assignments to ${esc(user.email)}
+            </button>
           </div>
 
           <div class="row sp" style="margin-top: 24px;">

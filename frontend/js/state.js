@@ -2,6 +2,8 @@
  * Application State Management & LocalStorage Persistence
  */
 import { ST, stOf, DEF, guess, blank, okUrl } from './utils/helpers.js';
+import { authService } from './auth/authService.js';
+import { assignmentSyncService } from './services/assignmentSyncService.js';
 
 const KEY = 'study-planner-mmdc-v3';
 
@@ -119,3 +121,22 @@ export const saveState = () => {
 };
 
 export const isSaveFailed = () => saveFailed;
+
+/**
+ * Returns active assignments:
+ * - If user is authenticated and cloud sync is active, returns cloud assignments.
+ * - Otherwise returns local browser assignments from localStorage.
+ * Original local assignments in localStorage are always preserved.
+ */
+export const getActiveAssignments = () => {
+  if (authService.isAuthenticated() && assignmentSyncService.isCloudActive()) {
+    return assignmentSyncService.getCloudAssignments();
+  }
+  return getState().assignments;
+};
+
+export const findAssignment = (id) => {
+  const list = getActiveAssignments();
+  return list.find(a => String(a.id) === String(id));
+};
+

@@ -1,7 +1,11 @@
 import { esc, fmt, today, addDays, cmp, isOpen, lk, pill, progressBadge, dueTag, okUrl, safeExternalLink } from '../utils/helpers.js';
-import { isSaveFailed } from '../state.js';
+import { isSaveFailed, getActiveAssignments, getState } from '../state.js';
+import { assignmentSyncService } from '../services/assignmentSyncService.js';
+import { authService } from '../auth/authService.js';
+import { uiState } from '../router.js';
 
 export function renderSubjectTable(state, pid) {
+  const activeAssignments = getActiveAssignments();
   const subs = state.subjects.filter(s => s.project_id == pid);
   const seenLabels = [];
   subs.forEach(s => s.props.forEach(p => {
@@ -40,7 +44,7 @@ export function renderSubjectTable(state, pid) {
           ${subs.map(s => `
             <tr>
               <td class="n"><a href="#subject-${s.id}">${esc(s.name) || 'Untitled'}</a></td>
-              <td>${progressBadge(state.assignments, s.id)}</td>
+              <td>${progressBadge(activeAssignments, s.id)}</td>
               ${seenLabels.map(l => `<td class="c">${propVal(s, l)}</td>`).join('')}
             </tr>
           `).join('') || `<tr><td colspan="${seenLabels.length + 2}" class="meta">No subjects yet. Add your first subject.</td></tr>`}
@@ -88,7 +92,9 @@ export function renderAssignmentTable(state, list, showSub, emptyMessage) {
   `;
 }
 
-export const renderProjectList = (state) => `
+export const renderProjectList = (state) => {
+  const activeAssignments = getActiveAssignments();
+  return `
   <h2>Projects</h2>
   <div class="wrap">
     <table>
@@ -102,7 +108,7 @@ export const renderProjectList = (state) => `
       <tbody>
         ${state.projects.map(p => {
           const ids = state.subjects.filter(s => s.project_id == p.id).map(s => s.id);
-          const openCount = state.assignments.filter(a => ids.includes(a.subject_id) && isOpen(a)).length;
+          const openCount = activeAssignments.filter(a => ids.includes(a.subject_id) && isOpen(a)).length;
           return `
             <tr>
               <td class="n"><a href="#project-${p.id}">${esc(p.icon)} ${esc(p.name) || 'Untitled'}</a></td>
@@ -116,13 +122,21 @@ export const renderProjectList = (state) => `
     <button class="add" data-act="addproj">+ New project</button>
   </div>
 `;
+};
 
 export function renderDashboard(state, pid, currentTab = 'upcoming') {
   const t = today();
   const pr = state.projects.find(x => x.id == pid);
   const ids = new Set(state.subjects.filter(s => pid == null || s.project_id == pid).map(s => s.id));
-  const all = state.assignments.filter(a => ids.has(a.subject_id)).sort(cmp);
+  const activeAssignments = getActiveAssignments();
+  const all = activeAssignments.filter(a => ids.has(a.subject_id)).sort(cmp);
   const openAsgs = all.filter(isOpen);
+
+  const user = authService.getUser();
+  const syncStatus = assignmentSyncService.syncStatus;
+  const syncError = assignmentSyncService.lastError;
+  const localCount = (state.assignments || []).length;
+  const importReport = uiState.importReport;
 
   if (pid == null) {
     return `
@@ -156,6 +170,42 @@ export function renderDashboard(state, pid, currentTab = 'upcoming') {
       </div>
       <a class="btn primary" href="#new" data-from>+ Add assignment</a>
     </div>
+
+    ${user ? `
+      <div style="margin: 12px 0 16px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <div style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+          <span>☁️</span>
+          <span><strong>Cloud Sync:</strong> ${esc(user.email)}</span>
+          ${syncStatus === 'syncing' ? '<span class="pill ip">Syncing...</span>' : ''}
+          ${syncStatus === 'synced' ? '<span class="pill dn">Synced</span>' : ''}
+          ${syncStatus === 'error' ? '<span class="pill ns" style="color:var(--err);border-color:var(--err)">Sync error</span>' : ''}
+        </div>
+        ${syncStatus === 'error' ? `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="meta" style="color:var(--err)">${esc(syncError)}</span>
+            <button class="ghost" data-act="retrysync" style="min-height:28px;padding:0 8px;font-size:12px">Retry</button>
+          </div>
+        ` : ''}
+      </div>
+
+      ${importReport ? `
+        <div class="banner" role="status" style="background: var(--okbg); color: var(--ok); border: 1px solid var(--ok); margin-bottom: 12px; font-size: 13px;">
+          <strong>✓ Local Import Result:</strong> ${importReport.imported} imported, ${importReport.skipped} already synced${importReport.failed ? `, ${importReport.failed} failed` : ''} into ${esc(user.email)}.
+          <button class="ghost" data-act="clearimportreport" style="margin-left: 8px; font-size: 11px; padding: 0 4px; min-height: 22px;">Dismiss</button>
+        </div>
+      ` : ''}
+
+      ${localCount > 0 ? `
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-bottom: 16px; color: #1e3a8a; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <strong>📦 Browser Data Available:</strong> You have ${localCount} local assignment(s) saved in this browser.
+          </div>
+          <button class="btn primary" data-act="importlocal" style="min-height: 32px; font-size: 12px; padding: 0 12px;">
+            Import to ${esc(user.email)}
+          </button>
+        </div>
+      ` : ''}
+    ` : ''}
 
     ${isSaveFailed() ? '<div class="banner" role="alert">Could not save to this browser. Changes may be lost on refresh.</div>' : ''}
 

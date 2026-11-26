@@ -1,7 +1,7 @@
 /**
  * Central Router & View Orchestrator
  */
-import { getState, saveState } from './state.js';
+import { getState, saveState, findAssignment } from './state.js';
 import { renderSidebar } from './views/sidebarView.js';
 import { renderDashboard } from './views/dashboardView.js';
 import { renderSubjectPage } from './views/subjectView.js';
@@ -28,7 +28,7 @@ export function goBack(assignment) {
   uiState.errs = {};
   uiState.arm = '';
   const state = getState();
-  const sub = assignment ? state.subjects.find(s => s.id == assignment.subject_id) : null;
+  const sub = assignment ? state.subjects.find(s => String(s.id) === String(assignment.subject_id)) : null;
   const target = uiState.from || (sub ? 'subject-' + sub.id : '');
   const cur = location.hash.slice(1);
   uiState.from = '';
@@ -54,8 +54,8 @@ export function renderApp() {
     bodyContent = renderNotePage(state, match[1], { arm: uiState.arm });
   } else if ((match = h.match(/^new(?:-(\d+))?$/))) {
     bodyContent = renderAssignmentForm(state, null, match[1], uiState.errs, uiState.draft, uiState.arm);
-  } else if ((match = h.match(/^edit-(\d+)$/))) {
-    const a = state.assignments.find(x => x.id == match[1]);
+  } else if ((match = h.match(/^edit-([a-zA-Z0-9\-_]+)$/))) {
+    const a = findAssignment(match[1]);
     bodyContent = a
       ? renderAssignmentForm(state, a, '', uiState.errs, uiState.draft, uiState.arm)
       : '<h1>Assignment not found</h1>';

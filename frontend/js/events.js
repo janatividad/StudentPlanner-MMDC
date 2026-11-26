@@ -1,11 +1,12 @@
 /**
  * Centralized Event Handlers & User Interactions
  */
-import { getState, saveState } from './state.js';
+import { getState, saveState, findAssignment } from './state.js';
 import { uiState, renderApp, goBack } from './router.js';
 import { authService } from './auth/authService.js';
 import { authUiState } from './views/authView.js';
 import { setAuthConfig } from './config.js';
+import { assignmentSyncService } from './services/assignmentSyncService.js';
 import {
   blank,
   nid,
@@ -23,7 +24,7 @@ const getTargetEntity = (el) => {
   if (e === 'sub') return state.subjects.find(s => s.id == el.dataset.id);
   if (e === 'page') return state.pages.find(x => x.id == el.dataset.id);
   if (e === 'proj') return state.projects.find(x => x.id == el.dataset.id);
-  if (e === 'asg') return state.assignments.find(x => x.id == el.dataset.id);
+  if (e === 'asg') return findAssignment(el.dataset.id);
   if (e === 'prop') {
     const s = state.subjects.find(sub => sub.id == el.dataset.id);
     return s && s.props.find(p => p.id === el.dataset.pid);
@@ -121,6 +122,28 @@ export function setupEventListeners() {
     const id = el.dataset.id;
     const act = el.dataset.act;
 
+    if (act === 'retrysync') {
+      assignmentSyncService.fetchCloudAssignments().then(() => {
+        renderApp();
+      });
+      return;
+    }
+    if (act === 'clearimportreport') {
+      uiState.importReport = null;
+      renderApp();
+      return;
+    }
+    if (act === 'importlocal') {
+      assignmentSyncService.importLocalAssignments().then((report) => {
+        uiState.importReport = report;
+        say(`Imported ${report.imported} assignment(s) to cloud.`);
+        renderApp();
+      }).catch((err) => {
+        say('Import failed: ' + err.message);
+        renderApp();
+      });
+      return;
+    }
     if (act === 'toggleconfig') {
       authUiState.showConfig = !authUiState.showConfig;
       renderApp();
@@ -297,9 +320,22 @@ export function setupEventListeners() {
         renderApp();
         return;
       }
+      if (authService.isAuthenticated()) {
+        const a = findAssignment(id);
+        assignmentSyncService.deleteCloudAssignment(id).then(() => {
+          uiState.arm = '';
+          say('Cloud assignment deleted.');
+          goBack(a);
+        }).catch((err) => {
+          say('Delete failed: ' + err.message);
+          renderApp();
+        });
+        return;
+      }
       const a = state.assignments.find(x => x.id == id);
       state.assignments = state.assignments.filter(x => x.id != id);
       saveState();
+      uiState.arm = '';
       goBack(a);
     }
     if (act === 'dellink') {
@@ -337,6 +373,22 @@ export function setupEventListeners() {
   document.addEventListener('change', (e) => {
     const el = e.target;
     if (el.tagName !== 'SELECT' || !el.dataset.f) return;
+
+    if (el.dataset.ent === 'asg') {
+      const field = el.dataset.f;
+      const val = el.value;
+      if (authService.isAuthenticated()) {
+        assignmentSyncService.updateCloudAssignment(el.dataset.id, { [field]: val }).then(() => {
+          say('Status set to ' + stOf(val)[1]);
+          renderApp();
+        }).catch((err) => {
+          say('Failed to update status: ' + err.message);
+          renderApp();
+        });
+        return;
+      }
+    }
+
     const o = getTargetEntity(el);
     if (!o) return;
 
@@ -453,16 +505,37 @@ export function setupEventListeners() {
         resource_url: v.resource_url.trim()
       };
 
+      if (authService.isAuthenticated()) {
+        const id = form.dataset.id;
+        const op = id
+          ? assignmentSyncService.updateCloudAssignment(id, rec)
+          : assignmentSyncService.createCloudAssignment(rec);
+
+        op.then((saved) => {
+          uiState.draft = null;
+          uiState.errs = {};
+          say('Assignment saved to cloud.');
+          goBack(saved);
+        }).catch((err) => {
+          uiState.errs.general = err.message || 'Failed to save to Supabase cloud.';
+          say('Save failed: ' + uiState.errs.general);
+          renderApp();
+        });
+        return;
+      }
+
       let a;
       if (form.dataset.id) {
         a = state.assignments.find(x => x.id == form.dataset.id);
-        Object.assign(a, rec);
+        if (a) Object.assign(a, rec);
       } else {
         a = { id: state.next++, ...rec };
         state.assignments.push(a);
       }
 
       saveState();
+      uiState.draft = null;
+      uiState.errs = {};
       say('Assignment saved.');
       goBack(a);
       return;

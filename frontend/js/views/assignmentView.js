@@ -22,6 +22,7 @@ export function renderAssignmentForm(state, assignment, defaultSubjectId = '', e
   return `
     <nav class="meta"><a href="#" data-cancel>← Cancel</a></nav>
     <h1>${assignment ? 'Edit assignment' : 'Add assignment'}</h1>
+    ${errors.general ? `<div class="banner" role="alert" style="margin-bottom:16px;"><strong>Save Error:</strong> ${esc(errors.general)}</div>` : ''}
     <form data-form="asg" data-id="${assignment ? assignment.id : ''}" novalidate style="max-width:640px">
       ${inp('title', 'Title', '', 'Add a title')}
 

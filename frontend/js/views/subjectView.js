@@ -1,4 +1,5 @@
 import { esc, cmp, okUrl, typeOf, TYPES, safeExternalLink } from '../utils/helpers.js';
+import { getActiveAssignments } from '../state.js';
 import { renderAssignmentTable } from './dashboardView.js';
 
 export function renderTypeBtn(s, p, tmenu) {
@@ -55,7 +56,8 @@ export function renderSubjectPage(state, id, options = {}) {
   const s = state.subjects.find(sub => sub.id == id);
   if (!s) return '<h1>Subject not found</h1>';
 
-  const as = state.assignments.filter(a => a.subject_id == id).sort(cmp);
+  const allAs = getActiveAssignments();
+  const as = allAs.filter(a => String(a.subject_id) === String(id)).sort(cmp);
   const doneCount = as.filter(a => a.status === 'done').length;
   const progressText = as.length
     ? `<span class="bar"><i style="width:${Math.round((doneCount / as.length) * 100)}%"></i></span>${doneCount}/${as.length} · ${Math.round((doneCount / as.length) * 100)}%`

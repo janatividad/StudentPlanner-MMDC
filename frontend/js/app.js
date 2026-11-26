@@ -5,6 +5,7 @@ import { loadState } from './state.js';
 import { setupEventListeners } from './events.js';
 import { renderApp } from './router.js';
 import { authService } from './auth/authService.js';
+import { assignmentSyncService } from './services/assignmentSyncService.js';
 
 export function initApp() {
   loadState();
@@ -13,10 +14,25 @@ export function initApp() {
   // Process incoming Supabase Auth callback tokens if present in URL hash
   authService.handleAuthCallback();
 
-  // Listen to auth state transitions (sign in, sign out, token refresh)
-  authService.onAuthStateChange(() => {
+  // Listen to cloud assignment sync changes
+  assignmentSyncService.onSyncChange(() => {
     renderApp();
   });
+
+  // Listen to auth state transitions (sign in, sign out, token refresh)
+  authService.onAuthStateChange((user) => {
+    if (user) {
+      assignmentSyncService.fetchCloudAssignments();
+    } else {
+      assignmentSyncService.clearCloudState();
+    }
+    renderApp();
+  });
+
+  // If already logged in on initial load, fetch cloud assignments
+  if (authService.isAuthenticated()) {
+    assignmentSyncService.fetchCloudAssignments();
+  }
 
   renderApp();
   registerServiceWorker();
