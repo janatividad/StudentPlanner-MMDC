@@ -295,39 +295,3 @@ export function renderDashboard(state, pid, currentTab = 'upcoming') {
     <div class="err" id="lerr"></div>
   `;
 }
-
-    ${isSaveFailed() ? '<div class="banner" role="alert">Could not save to this browser. Changes may be lost on refresh.</div>' : ''}
-
-    ${pr ? `<h2>Subjects</h2>${renderSubjectTable(state, pid)}` : renderProjectList(state)}
-
-    <h2>Assignments</h2>
-    <div class="tabs row" style="margin-bottom:8px">
-      ${tabs.map(([k, l]) => `
-        <button data-tab="${k}" aria-pressed="${currentTab === k}">
-          ${l}${k === 'overdue' && openAsgs.some(a => a.due_date < t) ? ' (' + openAsgs.filter(a => a.due_date < t).length + ')' : ''}
-        </button>
-      `).join('')}
-    </div>
-
-    ${renderAssignmentTable(
-      state,
-      f,
-      true,
-      currentTab === 'overdue' ? 'Nothing overdue.' : 'No work due. Add an assignment to get started.'
-    )}
-
-    <h2>Quick links</h2>
-    <div class="ql">
-      ${state.links.map(l => `
-        ${safeExternalLink(l.url, l.label, { invalidMode: 'text' })}
-        <button class="ghost" style="min-height:28px;padding:0 6px;margin-right:6px" data-act="dellink" data-id="${l.id}" aria-label="Remove ${esc(l.label)}">×</button>
-      `).join('') || '<span class="meta">No quick links yet.</span>'}
-    </div>
-    <form data-form="link" class="row" style="margin-top:8px">
-      <input name="label" placeholder="Label, e.g. MyCamu Portal" style="flex:1 1 160px;width:auto" aria-label="Label">
-      <input name="url" placeholder="https://" style="flex:2 1 220px;width:auto" aria-label="URL">
-      <button>Add link</button>
-    </form>
-    <div class="err" id="lerr"></div>
-  `;
-}
