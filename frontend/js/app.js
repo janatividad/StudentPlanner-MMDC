@@ -5,7 +5,7 @@ import { loadState } from './state.js';
 import { setupEventListeners } from './events.js';
 import { renderApp } from './router.js';
 import { authService } from './auth/authService.js';
-import { assignmentSyncService } from './services/assignmentSyncService.js';
+import { plannerSyncService } from './services/plannerSyncService.js';
 
 export function initApp() {
   loadState();
@@ -14,24 +14,24 @@ export function initApp() {
   // Process incoming Supabase Auth callback tokens if present in URL hash
   authService.handleAuthCallback();
 
-  // Listen to cloud assignment sync changes
-  assignmentSyncService.onSyncChange(() => {
+  // Listen to full planner cloud sync changes
+  plannerSyncService.onSyncChange(() => {
     renderApp();
   });
 
   // Listen to auth state transitions (sign in, sign out, token refresh)
   authService.onAuthStateChange((user) => {
     if (user) {
-      assignmentSyncService.fetchCloudAssignments();
+      plannerSyncService.fetchCloudPlanner();
     } else {
-      assignmentSyncService.clearCloudState();
+      plannerSyncService.clearCloudState();
     }
     renderApp();
   });
 
-  // If already logged in on initial load, fetch cloud assignments
+  // If already logged in on initial load, fetch cloud planner entities
   if (authService.isAuthenticated()) {
-    assignmentSyncService.fetchCloudAssignments();
+    plannerSyncService.fetchCloudPlanner();
   }
 
   renderApp();

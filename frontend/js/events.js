@@ -1,12 +1,13 @@
 /**
  * Centralized Event Handlers & User Interactions
  */
-import { getState, saveState, findAssignment } from './state.js';
+import { getState, saveState, findAssignment, findSubject, findProject, findPage, getActiveProjects, getActiveSubjects, getActivePages } from './state.js';
 import { uiState, renderApp, goBack } from './router.js';
 import { authService } from './auth/authService.js';
 import { authUiState } from './views/authView.js';
 import { setAuthConfig } from './config.js';
 import { assignmentSyncService } from './services/assignmentSyncService.js';
+import { plannerSyncService } from './services/plannerSyncService.js';
 import {
   blank,
   nid,
@@ -17,23 +18,27 @@ import {
 } from './utils/helpers.js';
 
 let dragId = '';
+let syncTimer = null;
+const debounceCloudSync = (fn, delay = 500) => {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(fn, delay);
+};
 
 const getTargetEntity = (el) => {
-  const state = getState();
   const e = el.dataset.ent;
-  if (e === 'sub') return state.subjects.find(s => s.id == el.dataset.id);
-  if (e === 'page') return state.pages.find(x => x.id == el.dataset.id);
-  if (e === 'proj') return state.projects.find(x => x.id == el.dataset.id);
+  if (e === 'sub') return findSubject(el.dataset.id);
+  if (e === 'page') return findPage(el.dataset.id);
+  if (e === 'proj') return findProject(el.dataset.id);
   if (e === 'asg') return findAssignment(el.dataset.id);
   if (e === 'prop') {
-    const s = state.subjects.find(sub => sub.id == el.dataset.id);
-    return s && s.props.find(p => p.id === el.dataset.pid);
+    const s = findSubject(el.dataset.id);
+    return s && (s.props || []).find(p => p.id === el.dataset.pid);
   }
   return null;
 };
 
 const reorderProperties = (subject, aId, bId, after) => {
-  if (aId === bId) return;
+  if (aId === bId || !subject || !subject.props) return;
   const i = subject.props.findIndex(p => p.id === aId);
   if (i < 0) return;
   const [moved] = subject.props.splice(i, 1);
@@ -41,6 +46,9 @@ const reorderProperties = (subject, aId, bId, after) => {
   if (j < 0) j = subject.props.length;
   subject.props.splice(after ? j + 1 : j, 0, moved);
   saveState();
+  if (authService.isAuthenticated()) {
+    plannerSyncService.updateCloudSubject(subject.id, { props: subject.props }).catch(() => {});
+  }
 };
 
 const clearDragClasses = () => {
@@ -123,7 +131,10 @@ export function setupEventListeners() {
     const act = el.dataset.act;
 
     if (act === 'retrysync') {
-      assignmentSyncService.fetchCloudAssignments().then(() => {
+      plannerSyncService.fetchCloudPlanner().then(() => {
+        renderApp();
+      }).catch(err => {
+        say('Sync failed: ' + err.message);
         renderApp();
       });
       return;
@@ -134,9 +145,9 @@ export function setupEventListeners() {
       return;
     }
     if (act === 'importlocal') {
-      assignmentSyncService.importLocalAssignments().then((report) => {
+      plannerSyncService.importAllLocalData().then((report) => {
         uiState.importReport = report;
-        say(`Imported ${report.imported} assignment(s) to cloud.`);
+        say(`Import complete: ${report.projects.imported} projects, ${report.subjects.imported} subjects, ${report.assignments.imported} assignments imported.`);
         renderApp();
       }).catch((err) => {
         say('Import failed: ' + err.message);
@@ -163,12 +174,28 @@ export function setupEventListeners() {
     }
     if (act === 'addsub') {
       const s = blank(state.next++, '');
+      if (authService.isAuthenticated()) {
+        plannerSyncService.createCloudSubject({ project_id: id, name: '', status: 'not_started', props: s.props })
+          .then(saved => {
+            location.hash = 'subject-' + saved.id;
+          })
+          .catch(err => say('Failed to create subject: ' + err.message));
+        return;
+      }
       s.project_id = +id;
       state.subjects.push(s);
       saveState();
       location.hash = 'subject-' + s.id;
     }
     if (act === 'addproj') {
+      if (authService.isAuthenticated()) {
+        plannerSyncService.createCloudProject({ name: 'Untitled Project', icon: '📚' })
+          .then(saved => {
+            location.hash = 'project-' + saved.id;
+          })
+          .catch(err => say('Failed to create project: ' + err.message));
+        return;
+      }
       const p = { id: state.next++, name: '', icon: '📚' };
       state.projects.push(p);
       saveState();
@@ -186,8 +213,10 @@ export function setupEventListeners() {
       return;
     }
     if (act === 'settype') {
-      const s = state.subjects.find(sub => sub.id == id);
-      const p = s.props.find(x => x.id === el.dataset.pid);
+      const s = findSubject(id);
+      if (!s) return;
+      const p = (s.props || []).find(x => x.id === el.dataset.pid);
+      if (!p) return;
       const t = el.dataset.t;
       const tx = ['text', 'url', 'email', 'phone'];
       const s2 = ['select', 'status'];
@@ -210,13 +239,18 @@ export function setupEventListeners() {
       p.value = nv;
       uiState.tmenu = '';
       saveState();
+      if (authService.isAuthenticated()) {
+        plannerSyncService.updateCloudSubject(s.id, { props: s.props }).catch(() => {});
+      }
       renderApp();
       say('Property type set to ' + typeOf(t)[1]);
       return;
     }
     if (act === 'opt') {
-      const s = state.subjects.find(sub => sub.id == id);
-      const p = s.props.find(x => x.id === el.dataset.pid);
+      const s = findSubject(id);
+      if (!s) return;
+      const p = (s.props || []).find(x => x.id === el.dataset.pid);
+      if (!p) return;
       const o = el.dataset.o;
       if (p.type === 'multi') {
         const a = Array.isArray(p.value) ? p.value : [];
@@ -225,18 +259,26 @@ export function setupEventListeners() {
         p.value = p.value === o ? '' : o;
       }
       saveState();
+      if (authService.isAuthenticated()) {
+        plannerSyncService.updateCloudSubject(s.id, { props: s.props }).catch(() => {});
+      }
       renderApp();
       return;
     }
     if (act === 'delopt') {
-      const s = state.subjects.find(sub => sub.id == id);
-      const p = s.props.find(x => x.id === el.dataset.pid);
+      const s = findSubject(id);
+      if (!s) return;
+      const p = (s.props || []).find(x => x.id === el.dataset.pid);
+      if (!p) return;
       const o = el.dataset.o;
       p.options = (p.options || []).filter(x => x !== o);
       p.value = Array.isArray(p.value)
         ? p.value.filter(x => x !== o)
         : p.value === o ? '' : p.value;
       saveState();
+      if (authService.isAuthenticated()) {
+        plannerSyncService.updateCloudSubject(s.id, { props: s.props }).catch(() => {});
+      }
       renderApp();
       return;
     }
@@ -253,6 +295,15 @@ export function setupEventListeners() {
     }
     if (act === 'delprojok') {
       uiState.confirmId = '';
+      if (authService.isAuthenticated()) {
+        plannerSyncService.deleteCloudProject(id).then(() => {
+          uiState.arm = '';
+          location.hash = '';
+          renderApp();
+          say('Project deleted from cloud.');
+        }).catch(err => say('Delete failed: ' + err.message));
+        return;
+      }
       const sids = state.subjects.filter(s => s.project_id == id).map(s => s.id);
       state.assignments = state.assignments.filter(a => !sids.includes(a.subject_id));
       state.subjects = state.subjects.filter(s => s.project_id != id);
@@ -271,29 +322,56 @@ export function setupEventListeners() {
       say('Project deleted.');
     }
     if (act === 'addpage') {
+      if (authService.isAuthenticated()) {
+        plannerSyncService.createCloudPage({ title: '', icon: '📄', body: '' })
+          .then(p => {
+            location.hash = 'page-' + p.id;
+          })
+          .catch(err => say('Failed to create page: ' + err.message));
+        return;
+      }
       const p = { id: state.next++, title: '', icon: '📄', body: '' };
       state.pages.push(p);
       saveState();
       location.hash = 'page-' + p.id;
     }
     if (act === 'addprop') {
-      const s = state.subjects.find(sub => sub.id == id);
+      const s = findSubject(id);
+      if (!s) return;
+      s.props = s.props || [];
       const p = { id: nid(), label: '', value: '' };
       s.props.push(p);
       saveState();
+      if (authService.isAuthenticated()) {
+        plannerSyncService.updateCloudSubject(s.id, { props: s.props }).catch(() => {});
+      }
       uiState.focusP = p.id;
       renderApp();
     }
     if (act === 'delprop') {
-      const s = state.subjects.find(sub => sub.id == id);
-      s.props = s.props.filter(p => p.id !== el.dataset.pid);
+      const s = findSubject(id);
+      if (!s) return;
+      s.props = (s.props || []).filter(p => p.id !== el.dataset.pid);
       saveState();
+      if (authService.isAuthenticated()) {
+        plannerSyncService.updateCloudSubject(s.id, { props: s.props }).catch(() => {});
+      }
       renderApp();
     }
     if (act === 'delsub') {
       if (uiState.arm !== 's' + id) {
         uiState.arm = 's' + id;
         renderApp();
+        return;
+      }
+      if (authService.isAuthenticated()) {
+        const sj = findSubject(id);
+        plannerSyncService.deleteCloudSubject(id).then(() => {
+          uiState.arm = '';
+          say('Subject deleted from cloud.');
+          location.hash = sj ? 'project-' + sj.project_id : '';
+          renderApp();
+        }).catch(err => say('Delete failed: ' + err.message));
         return;
       }
       const sj = state.subjects.find(s => s.id == id);
@@ -307,6 +385,15 @@ export function setupEventListeners() {
       if (uiState.arm !== 'g' + id) {
         uiState.arm = 'g' + id;
         renderApp();
+        return;
+      }
+      if (authService.isAuthenticated()) {
+        plannerSyncService.deleteCloudPage(id).then(() => {
+          uiState.arm = '';
+          say('Page deleted from cloud.');
+          location.hash = '';
+          renderApp();
+        }).catch(err => say('Delete failed: ' + err.message));
         return;
       }
       state.pages = state.pages.filter(p => p.id != id);
@@ -339,6 +426,13 @@ export function setupEventListeners() {
       goBack(a);
     }
     if (act === 'dellink') {
+      if (authService.isAuthenticated()) {
+        plannerSyncService.deleteCloudLink(id).then(() => {
+          say('Link deleted.');
+          renderApp();
+        }).catch(err => say('Delete failed: ' + err.message));
+        return;
+      }
       state.links = state.links.filter(r => r.id != id);
       saveState();
       renderApp();
@@ -361,8 +455,25 @@ export function setupEventListeners() {
     if (!o) return;
 
     if (el.dataset.ent === 'optadd') return;
-    o[el.dataset.f || el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value;
+    const val = el.type === 'checkbox' ? el.checked : el.value;
+    const propKey = el.dataset.f || el.dataset.k;
+    o[propKey] = val;
     saveState();
+
+    if (authService.isAuthenticated()) {
+      if (el.dataset.ent === 'proj') {
+        debounceCloudSync(() => plannerSyncService.updateCloudProject(el.dataset.id, { [propKey]: val }).catch(() => {}));
+      } else if (el.dataset.ent === 'sub') {
+        debounceCloudSync(() => plannerSyncService.updateCloudSubject(el.dataset.id, { [propKey]: val }).catch(() => {}));
+      } else if (el.dataset.ent === 'page') {
+        debounceCloudSync(() => plannerSyncService.updateCloudPage(el.dataset.id, { [propKey]: val }).catch(() => {}));
+      } else if (el.dataset.ent === 'prop') {
+        const s = findSubject(el.dataset.id);
+        if (s) {
+          debounceCloudSync(() => plannerSyncService.updateCloudSubject(s.id, { props: s.props }).catch(() => {}));
+        }
+      }
+    }
 
     if (['name', 'title', 'icon'].includes(el.dataset.f) || el.dataset.k === 'label') {
       renderApp();
@@ -472,7 +583,8 @@ export function setupEventListeners() {
       if (!t) uiState.errs.title = 'Enter a title.';
       else if (t.length > 160) uiState.errs.title = 'Use 160 characters or fewer.';
 
-      if (!state.subjects.some(s => s.id == v.subject_id)) {
+      const activeSubs = getActiveSubjects();
+      if (!activeSubs.some(s => String(s.id) === String(v.subject_id))) {
         uiState.errs.subject_id = 'Choose a subject.';
       }
 
@@ -496,7 +608,7 @@ export function setupEventListeners() {
 
       const rec = {
         title: t,
-        subject_id: +v.subject_id,
+        subject_id: v.subject_id,
         due_date: v.due_date,
         status: v.status,
         notes: v.notes,
@@ -547,7 +659,17 @@ export function setupEventListeners() {
         if (err) err.textContent = 'Enter a label and an http(s) URL.';
         return;
       }
-      state.links.push({ id: state.next++, label: v.label.trim(), url: v.url });
+      if (authService.isAuthenticated()) {
+        plannerSyncService.createCloudLink({ label: v.label.trim(), url: v.url.trim() }).then(() => {
+          form.reset();
+          say('Link added to cloud.');
+          renderApp();
+        }).catch(e => {
+          if (err) err.textContent = e.message;
+        });
+        return;
+      }
+      state.links.push({ id: state.next++, label: v.label.trim(), url: v.url.trim() });
       saveState();
       renderApp();
     }

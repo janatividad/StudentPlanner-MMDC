@@ -1,11 +1,14 @@
 import { esc } from '../utils/helpers.js';
 import { authService } from '../auth/authService.js';
+import { getActiveProjects, getActivePages } from '../state.js';
 
 export function renderSidebar(state, options = {}) {
   const { menu = '' } = options;
   const h = location.hash.slice(1);
   const cur = x => (h === x ? ' aria-current="page"' : '');
   const user = authService.getUser();
+  const activeProjects = getActiveProjects();
+  const activePages = getActivePages();
 
   const sideEl = document.getElementById('side');
   if (!sideEl) return;
@@ -23,7 +26,7 @@ export function renderSidebar(state, options = {}) {
       <span>Projects</span>
       <button data-act="addproj" aria-label="New project">+</button>
     </div>
-    ${state.projects.map(p => `
+    ${activeProjects.map(p => `
       <div class="pr">
         <a class="si" href="#project-${p.id}"${cur('project-' + p.id)}>
           ${esc(p.icon) || '📚'} ${esc(p.name) || 'Untitled'}
@@ -37,6 +40,18 @@ export function renderSidebar(state, options = {}) {
         ` : ''}
       </div>
     `).join('') || '<div class="meta" style="padding:0 8px">No projects yet.</div>'}
+
+    <div class="sh" style="margin-top: 16px;">
+      <span>Pages & Notes</span>
+      <button data-act="addpage" aria-label="New page">+</button>
+    </div>
+    ${activePages.map(pg => `
+      <div class="pr">
+        <a class="si" href="#page-${pg.id}"${cur('page-' + pg.id)}>
+          ${esc(pg.icon) || '📄'} ${esc(pg.title) || 'Untitled'}
+        </a>
+      </div>
+    `).join('') || '<div class="meta" style="padding:0 8px">No pages yet.</div>'}
 
     <div class="sh" style="margin-top: 24px;">
       <span>Account</span>

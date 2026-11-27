@@ -53,20 +53,20 @@ export function renderAuthPage() {
               <span style="font-size: 18px;">ℹ️</span>
               <div style="font-size: 13px; line-height: 18px; color: var(--text);">
                 <strong>Local Planner Storage Active:</strong><br>
-                All your subjects, assignments, notes, and custom properties remain saved locally in this browser's <code>localStorage</code>.
-                <span class="meta" style="display:block; margin-top: 4px;">Assignments can be synced with Supabase cloud.</span>
+                All your projects, subjects, assignments, notes, and links remain saved locally in this browser's <code>localStorage</code>.
+                <span class="meta" style="display:block; margin-top: 4px;">Cloud synchronization is active with Supabase.</span>
               </div>
             </div>
           </div>
 
-          <!-- Import Local Assignments Card -->
+          <!-- Import Local Planner Data Card -->
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
-            <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 6px; color: #166534;">📦 Sync Browser Assignments</h3>
+            <h3 style="font-size: 14px; font-weight: 600; margin: 0 0 6px; color: #166534;">📦 Sync Browser Planner Data</h3>
             <p style="font-size: 13px; margin: 0 0 10px; color: #14532d;">
-              Copy your local browser assignments to your Supabase account (<strong>${esc(user.email)}</strong>). Your local browser copy will remain completely intact.
+              Copy your local browser data (projects, subjects with custom properties, assignments, notes, and links) to your Supabase account (<strong>${esc(user.email)}</strong>). Your local browser copy remains completely intact.
             </p>
             <button class="btn primary" data-act="importlocal" style="font-size: 12px; min-height: 32px;">
-              Import local assignments to ${esc(user.email)}
+              Import local planner data to ${esc(user.email)}
             </button>
           </div>
 

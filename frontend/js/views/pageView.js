@@ -1,8 +1,9 @@
 import { esc } from '../utils/helpers.js';
+import { findPage } from '../state.js';
 
 export function renderNotePage(state, id, options = {}) {
   const { arm = '' } = options;
-  const p = state.pages.find(x => x.id == id);
+  const p = findPage(id);
   if (!p) return '<h1>Page not found</h1>';
 
   return `

@@ -1,7 +1,7 @@
 /**
  * Central Router & View Orchestrator
  */
-import { getState, saveState, findAssignment } from './state.js';
+import { getState, saveState, findAssignment, findSubject, findProject, findPage, getActiveProjects } from './state.js';
 import { renderSidebar } from './views/sidebarView.js';
 import { renderDashboard } from './views/dashboardView.js';
 import { renderSubjectPage } from './views/subjectView.js';
@@ -20,15 +20,15 @@ export const uiState = {
   focusO: '',
   menu: '',
   confirmId: '',
-  tmenu: ''
+  tmenu: '',
+  importReport: null
 };
 
 export function goBack(assignment) {
   uiState.draft = null;
   uiState.errs = {};
   uiState.arm = '';
-  const state = getState();
-  const sub = assignment ? state.subjects.find(s => String(s.id) === String(assignment.subject_id)) : null;
+  const sub = assignment ? findSubject(assignment.subject_id) : null;
   const target = uiState.from || (sub ? 'subject-' + sub.id : '');
   const cur = location.hash.slice(1);
   uiState.from = '';
@@ -45,23 +45,24 @@ export function renderApp() {
   const appEl = document.getElementById('app');
   let match, bodyContent;
 
-  if ((match = h.match(/^subject-(\d+)$/))) {
+  if ((match = h.match(/^subject-([a-zA-Z0-9\-_]+)$/))) {
     bodyContent = renderSubjectPage(state, match[1], {
       tmenu: uiState.tmenu,
       arm: uiState.arm
     });
-  } else if ((match = h.match(/^page-(\d+)$/))) {
+  } else if ((match = h.match(/^page-([a-zA-Z0-9\-_]+)$/))) {
     bodyContent = renderNotePage(state, match[1], { arm: uiState.arm });
-  } else if ((match = h.match(/^new(?:-(\d+))?$/))) {
+  } else if ((match = h.match(/^new(?:-([a-zA-Z0-9\-_]+))?$/))) {
     bodyContent = renderAssignmentForm(state, null, match[1], uiState.errs, uiState.draft, uiState.arm);
   } else if ((match = h.match(/^edit-([a-zA-Z0-9\-_]+)$/))) {
     const a = findAssignment(match[1]);
     bodyContent = a
       ? renderAssignmentForm(state, a, '', uiState.errs, uiState.draft, uiState.arm)
       : '<h1>Assignment not found</h1>';
-  } else if ((match = h.match(/^project-(\d+)$/))) {
-    bodyContent = state.projects.some(p => p.id == match[1])
-      ? renderDashboard(state, +match[1], uiState.tab)
+  } else if ((match = h.match(/^project-([a-zA-Z0-9\-_]+)$/))) {
+    const activeProjects = getActiveProjects();
+    bodyContent = activeProjects.some(p => String(p.id) === String(match[1]))
+      ? renderDashboard(state, match[1], uiState.tab)
       : '<h1>Project not found</h1>';
   } else if (h === 'auth' || h === 'signin' || h === 'signup') {
     bodyContent = renderAuthPage();

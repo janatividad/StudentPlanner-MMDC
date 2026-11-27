@@ -1,5 +1,5 @@
 import { esc, cmp, okUrl, typeOf, TYPES, safeExternalLink } from '../utils/helpers.js';
-import { getActiveAssignments } from '../state.js';
+import { getActiveAssignments, findSubject } from '../state.js';
 import { renderAssignmentTable } from './dashboardView.js';
 
 export function renderTypeBtn(s, p, tmenu) {
@@ -53,7 +53,7 @@ export function renderValEditor(s, p) {
 
 export function renderSubjectPage(state, id, options = {}) {
   const { tmenu = '', arm = '' } = options;
-  const s = state.subjects.find(sub => sub.id == id);
+  const s = findSubject(id);
   if (!s) return '<h1>Subject not found</h1>';
 
   const allAs = getActiveAssignments();

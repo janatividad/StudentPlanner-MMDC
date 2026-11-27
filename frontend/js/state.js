@@ -3,6 +3,7 @@
  */
 import { ST, stOf, DEF, guess, blank, okUrl } from './utils/helpers.js';
 import { authService } from './auth/authService.js';
+import { plannerSyncService } from './services/plannerSyncService.js';
 import { assignmentSyncService } from './services/assignmentSyncService.js';
 
 const KEY = 'study-planner-mmdc-v3';
@@ -123,20 +124,60 @@ export const saveState = () => {
 export const isSaveFailed = () => saveFailed;
 
 /**
- * Returns active assignments:
- * - If user is authenticated and cloud sync is active, returns cloud assignments.
- * - Otherwise returns local browser assignments from localStorage.
- * Original local assignments in localStorage are always preserved.
+ * Returns active entities based on auth and cloud sync state:
+ * - If user is authenticated and cloud sync is active, returns cloud data.
+ * - Otherwise returns local browser data from localStorage.
+ * Original local entities in localStorage are always strictly preserved.
  */
-export const getActiveAssignments = () => {
-  if (authService.isAuthenticated() && assignmentSyncService.isCloudActive()) {
-    return assignmentSyncService.getCloudAssignments();
+export const getActiveProjects = () => {
+  if (authService.isAuthenticated() && plannerSyncService.isCloudActive()) {
+    return plannerSyncService.getCloudProjects();
   }
-  return getState().assignments;
+  return getState().projects || [];
+};
+
+export const getActiveSubjects = () => {
+  if (authService.isAuthenticated() && plannerSyncService.isCloudActive()) {
+    return plannerSyncService.getCloudSubjects();
+  }
+  return getState().subjects || [];
+};
+
+export const getActiveAssignments = () => {
+  if (authService.isAuthenticated() && plannerSyncService.isCloudActive()) {
+    return plannerSyncService.getCloudAssignments();
+  }
+  return getState().assignments || [];
+};
+
+export const getActivePages = () => {
+  if (authService.isAuthenticated() && plannerSyncService.isCloudActive()) {
+    return plannerSyncService.getCloudPages();
+  }
+  return getState().pages || [];
+};
+
+export const getActiveLinks = () => {
+  if (authService.isAuthenticated() && plannerSyncService.isCloudActive()) {
+    return plannerSyncService.getCloudLinks();
+  }
+  return getState().links || [];
+};
+
+export const findProject = (id) => {
+  return getActiveProjects().find(p => String(p.id) === String(id));
+};
+
+export const findSubject = (id) => {
+  return getActiveSubjects().find(s => String(s.id) === String(id));
 };
 
 export const findAssignment = (id) => {
-  const list = getActiveAssignments();
-  return list.find(a => String(a.id) === String(id));
+  return getActiveAssignments().find(a => String(a.id) === String(id));
 };
+
+export const findPage = (id) => {
+  return getActivePages().find(p => String(p.id) === String(id));
+};
+
 

@@ -1,4 +1,5 @@
 import { esc, ST } from '../utils/helpers.js';
+import { getActiveSubjects, getActiveProjects } from '../state.js';
 
 export function renderAssignmentForm(state, assignment, defaultSubjectId = '', errors = {}, draft = null, arm = '') {
   const d = draft || assignment || {
@@ -11,6 +12,9 @@ export function renderAssignmentForm(state, assignment, defaultSubjectId = '', e
     coursera_url: '',
     resource_url: ''
   };
+
+  const activeSubjects = getActiveSubjects();
+  const activeProjects = getActiveProjects();
 
   const f = k => (errors[k] ? `<div class="err" id="e-${k}">${errors[k]}</div>` : '');
   const inp = (k, l, extra = '', ph = '') => `
@@ -29,9 +33,9 @@ export function renderAssignmentForm(state, assignment, defaultSubjectId = '', e
       <label for="f-subject_id">Subject</label>
       <select id="f-subject_id" name="subject_id">
         <option value="">Choose a subject</option>
-        ${state.subjects.map(s => {
-          const proj = state.projects.find(p => p.id == s.project_id) || {};
-          return `<option value="${s.id}"${s.id == d.subject_id ? ' selected' : ''}>${esc(proj.name || '')} – ${esc(s.name) || 'Untitled'}</option>`;
+        ${activeSubjects.map(s => {
+          const proj = activeProjects.find(p => String(p.id) === String(s.project_id)) || {};
+          return `<option value="${s.id}"${String(s.id) === String(d.subject_id) ? ' selected' : ''}>${esc(proj.name || '')} – ${esc(s.name) || 'Untitled'}</option>`;
         }).join('')}
       </select>
       ${f('subject_id')}
