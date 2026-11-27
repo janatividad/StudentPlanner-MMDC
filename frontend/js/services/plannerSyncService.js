@@ -95,20 +95,40 @@ class PlannerSyncService {
     }
   }
 
-  _getHeaders() {
+  async _getHeaders(customHeaders = {}) {
     const { anonKey } = getAuthConfig();
-    const session = authService.getSession();
-    const token = session?.access_token;
+    const token = await authService.getValidToken();
 
     if (!anonKey || !token) {
-      throw new Error('Authentication required to sync with cloud.');
+      throw new Error('Authentication required to sync with cloud. Please sign in again.');
     }
 
     return {
       'Content-Type': 'application/json',
       'apikey': anonKey,
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      ...customHeaders
     };
+  }
+
+  async _fetchWithAuth(endpoint, options = {}) {
+    let headers = await this._getHeaders(options.headers || {});
+    let res = await fetch(endpoint, { ...options, headers });
+
+    // Automatically recover if token expired
+    if (res.status === 401) {
+      try {
+        const refreshedToken = await authService.refreshToken();
+        if (refreshedToken) {
+          headers = await this._getHeaders(options.headers || {});
+          res = await fetch(endpoint, { ...options, headers });
+        }
+      } catch {
+        throw new Error('Session expired. Please sign in again.');
+      }
+    }
+
+    return res;
   }
 
   _getBaseEndpoint(entity) {
@@ -131,7 +151,6 @@ class PlannerSyncService {
     this._notifyListeners();
 
     try {
-      const headers = this._getHeaders();
       const endpoints = {
         projects: `${this._getBaseEndpoint('projects')}?select=*&order=created_at.asc`,
         subjects: `${this._getBaseEndpoint('subjects')}?select=*&order=created_at.asc`,
@@ -141,11 +160,11 @@ class PlannerSyncService {
       };
 
       const [resProj, resSub, resAsg, resPage, resLink] = await Promise.all([
-        fetch(endpoints.projects, { headers }),
-        fetch(endpoints.subjects, { headers }),
-        fetch(endpoints.assignments, { headers }),
-        fetch(endpoints.pages, { headers }),
-        fetch(endpoints.links, { headers })
+        this._fetchWithAuth(endpoints.projects),
+        this._fetchWithAuth(endpoints.subjects),
+        this._fetchWithAuth(endpoints.assignments),
+        this._fetchWithAuth(endpoints.pages),
+        this._fetchWithAuth(endpoints.links)
       ]);
 
       const responses = [resProj, resSub, resAsg, resPage, resLink];
@@ -199,9 +218,9 @@ class PlannerSyncService {
       import_id: projectData.import_id || null
     };
 
-    const res = await fetch(this._getBaseEndpoint('projects'), {
+    const res = await this._fetchWithAuth(this._getBaseEndpoint('projects'), {
       method: 'POST',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -223,9 +242,9 @@ class PlannerSyncService {
     if (updates.name !== undefined) payload.name = String(updates.name).trim().slice(0, 120);
     if (updates.icon !== undefined) payload.icon = updates.icon;
 
-    const res = await fetch(`${this._getBaseEndpoint('projects')}?id=eq.${encodeURIComponent(id)}`, {
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('projects')}?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -244,9 +263,8 @@ class PlannerSyncService {
   }
 
   async deleteCloudProject(id) {
-    const res = await fetch(`${this._getBaseEndpoint('projects')}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: this._getHeaders()
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('projects')}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
 
     if (!res.ok) {
@@ -286,9 +304,9 @@ class PlannerSyncService {
       import_id: subjectData.import_id || null
     };
 
-    const res = await fetch(this._getBaseEndpoint('subjects'), {
+    const res = await this._fetchWithAuth(this._getBaseEndpoint('subjects'), {
       method: 'POST',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -313,9 +331,9 @@ class PlannerSyncService {
     if (updates.notes !== undefined) payload.notes = updates.notes;
     if (updates.props !== undefined) payload.props = updates.props;
 
-    const res = await fetch(`${this._getBaseEndpoint('subjects')}?id=eq.${encodeURIComponent(id)}`, {
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('subjects')}?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -334,9 +352,8 @@ class PlannerSyncService {
   }
 
   async deleteCloudSubject(id) {
-    const res = await fetch(`${this._getBaseEndpoint('subjects')}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: this._getHeaders()
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('subjects')}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
 
     if (!res.ok) {
@@ -374,9 +391,9 @@ class PlannerSyncService {
       import_id: rec.import_id || null
     };
 
-    const res = await fetch(this._getBaseEndpoint('assignments'), {
+    const res = await this._fetchWithAuth(this._getBaseEndpoint('assignments'), {
       method: 'POST',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -404,9 +421,9 @@ class PlannerSyncService {
     if (updates.coursera_url !== undefined) payload.coursera_url = updates.coursera_url.trim();
     if (updates.resource_url !== undefined) payload.resource_url = updates.resource_url.trim();
 
-    const res = await fetch(`${this._getBaseEndpoint('assignments')}?id=eq.${encodeURIComponent(id)}`, {
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('assignments')}?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -425,9 +442,8 @@ class PlannerSyncService {
   }
 
   async deleteCloudAssignment(id) {
-    const res = await fetch(`${this._getBaseEndpoint('assignments')}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: this._getHeaders()
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('assignments')}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
 
     if (!res.ok) {
@@ -457,9 +473,9 @@ class PlannerSyncService {
       import_id: pageData.import_id || null
     };
 
-    const res = await fetch(this._getBaseEndpoint('pages'), {
+    const res = await this._fetchWithAuth(this._getBaseEndpoint('pages'), {
       method: 'POST',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -482,9 +498,9 @@ class PlannerSyncService {
     if (updates.icon !== undefined) payload.icon = updates.icon;
     if (updates.body !== undefined) payload.body = updates.body;
 
-    const res = await fetch(`${this._getBaseEndpoint('pages')}?id=eq.${encodeURIComponent(id)}`, {
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('pages')}?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -503,9 +519,8 @@ class PlannerSyncService {
   }
 
   async deleteCloudPage(id) {
-    const res = await fetch(`${this._getBaseEndpoint('pages')}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: this._getHeaders()
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('pages')}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
 
     if (!res.ok) {
@@ -534,9 +549,9 @@ class PlannerSyncService {
       import_id: linkData.import_id || null
     };
 
-    const res = await fetch(this._getBaseEndpoint('links'), {
+    const res = await this._fetchWithAuth(this._getBaseEndpoint('links'), {
       method: 'POST',
-      headers: { ...this._getHeaders(), 'Prefer': 'return=representation' },
+      headers: { 'Prefer': 'return=representation' },
       body: JSON.stringify(payload)
     });
 
@@ -554,9 +569,8 @@ class PlannerSyncService {
   }
 
   async deleteCloudLink(id) {
-    const res = await fetch(`${this._getBaseEndpoint('links')}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: this._getHeaders()
+    const res = await this._fetchWithAuth(`${this._getBaseEndpoint('links')}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE'
     });
 
     if (!res.ok) {
@@ -589,8 +603,7 @@ class PlannerSyncService {
     if (!session?.user?.id) throw new Error('Sign in to import your planner data.');
 
     const state = getState();
-    const headers = {
-      ...this._getHeaders(),
+    const importHeaders = {
       'Prefer': 'return=representation,resolution=ignore-duplicates'
     };
 
@@ -629,9 +642,9 @@ class PlannerSyncService {
           name: p.name || 'Untitled Project',
           icon: p.icon || '📚'
         };
-        const res = await fetch(this._getBaseEndpoint('projects'), {
+        const res = await this._fetchWithAuth(this._getBaseEndpoint('projects'), {
           method: 'POST',
-          headers,
+          headers: importHeaders,
           body: JSON.stringify(payload)
         });
         if (res.ok) {
@@ -669,9 +682,9 @@ class PlannerSyncService {
           notes: s.notes || '',
           props: s.props || []
         };
-        const res = await fetch(this._getBaseEndpoint('subjects'), {
+        const res = await this._fetchWithAuth(this._getBaseEndpoint('subjects'), {
           method: 'POST',
-          headers,
+          headers: importHeaders,
           body: JSON.stringify(payload)
         });
         if (res.ok) {
@@ -711,9 +724,9 @@ class PlannerSyncService {
           coursera_url: a.coursera_url || '',
           resource_url: a.resource_url || ''
         };
-        const res = await fetch(this._getBaseEndpoint('assignments'), {
+        const res = await this._fetchWithAuth(this._getBaseEndpoint('assignments'), {
           method: 'POST',
-          headers,
+          headers: importHeaders,
           body: JSON.stringify(payload)
         });
         if (res.ok) {
@@ -743,9 +756,9 @@ class PlannerSyncService {
           icon: pg.icon || '📄',
           body: pg.body || ''
         };
-        const res = await fetch(this._getBaseEndpoint('pages'), {
+        const res = await this._fetchWithAuth(this._getBaseEndpoint('pages'), {
           method: 'POST',
-          headers,
+          headers: importHeaders,
           body: JSON.stringify(payload)
         });
         if (res.ok) {
@@ -774,9 +787,9 @@ class PlannerSyncService {
           label: lk.label || '',
           url: lk.url || ''
         };
-        const res = await fetch(this._getBaseEndpoint('links'), {
+        const res = await this._fetchWithAuth(this._getBaseEndpoint('links'), {
           method: 'POST',
-          headers,
+          headers: importHeaders,
           body: JSON.stringify(payload)
         });
         if (res.ok) {
